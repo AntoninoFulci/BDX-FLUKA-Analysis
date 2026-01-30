@@ -1,24 +1,20 @@
 # BDX Analysis System
 
-## Table of Contents
-1. [Overview](#overview)
-2. [Getting Started](#getting-started)
-3. [System Architecture](#system-architecture)
-4. [Configuration Guide](#configuration-guide)
-5. [Core Components](#core-components)
-6. [Usage Examples](#usage-examples)
-7. [Advanced Features](#advanced-features)
-8. [Troubleshooting](#troubleshooting)
-9. [API Reference](#api-reference)
-
----
-
 ## Overview
 
 This is an analsysis Python-based framework for analyzing particle physics simulation data from ROOT files produced by FLUKA simulation using [FlukaROOTOutput](https://github.com/AntoninoFulci/FlukaROOTOutput).
 
-![example_plot1d](imgs/01_plot1d.png)![example_plot2d](imgs/02_plot2d.png)
-![example_comparisom_plot](imgs/03_plot1d_comparison.png)
+For example, we have the following typical analysis outputs:
+
+<div align="center">
+  <img src="imgs/01_plot1d.png" width="300">
+  <img src="imgs/02_plot2d.png" width="300">
+</div>
+
+<div align="center">
+  <img src="imgs/03_plot1d_comparison.png" width="605">
+</div>
+
 
 
 ### Key Features
