@@ -1,0 +1,104 @@
+input_directory: /Users/tonyf/Work/BDX/2025-11-21_BDX_NeutronArticle/GeometryC2prop/Simulation
+particle:
+  particle_id: 8
+  name: neutrons
+  variable: EKin
+  weight: Weight1
+# Optional: Define a new variable before analysis
+new_variable:
+  name: "EKin"
+  expression: "ETot - 0.939565378"
+output:
+  base_name: analysis
+  directory: /Users/tonyf/Work/BDX/2025-11-21_BDX_NeutronArticle/GeometryC2prop/Plots/FORWARD
+  include_timestamp: false
+  format_template: '{base_name}_{particle_name}_{n_bins}bins_{min_energy}_{max_energy}.root'
+histograms:
+- n_bins: 1000
+  min_energy: 1.0e-10
+  max_energy: 6.0
+  also_log_bins: true
+- n_bins: 100
+  min_energy: 1.0e-10
+  max_energy: 1.0e-07
+  also_log_bins: false
+- n_bins: 100
+  min_energy: 1.0e-07
+  max_energy: 0.0001
+  also_log_bins: false
+- n_bins: 100
+  min_energy: 0.0001
+  max_energy: 0.001
+  also_log_bins: false
+- n_bins: 100
+  min_energy: 0.001
+  max_energy: 0.1
+  also_log_bins: false
+- n_bins: 100
+  min_energy: 0.1
+  max_energy: 2.0
+  also_log_bins: false
+- n_bins: 100
+  min_energy: 2.0
+  max_energy: 7.0
+  also_log_bins: false
+surfaces:
+# - id: 1000
+#   name: fl_1000_enclose
+#   spatial_analysis: false
+# - id: 1005
+#   name: fl_1005_90_deg
+#   xl: -20
+#   xh: 20
+#   yl: -20
+#   yh: 20
+#   bin_width: 0.1
+# - id: 1004
+#   name: fl_1004_45_deg
+#   xl: -20
+#   xh: 20
+#   zl: 5309
+#   zh: 5330
+#   bin_width: 0.1
+# - id: 1003
+#   name: fl_1003_0_deg
+#   xl: -20
+#   xh: 20
+#   zl: 5230.0
+#   zh: 5250.0
+#   bin_width: 0.1
+# - id: 1002
+#   name: fl_1002_-45_deg
+#   xl: -20
+#   xh: 20
+#   zl: 5150
+#   zh: 5171
+#   bin_width: 0.1
+# - id: 1001
+#   name: fl_1001_-90_deg
+#   xl: -20
+#   xh: 20
+#   yl: -20
+#   yh: 20
+#   bin_width: 0.1
+- id: 1
+  name: fl_1_vault_exit
+  xl: -50
+  xh: 50
+  yl: -50
+  yh: 50
+  bin_width: 0.1
+- id: 2
+  name: fl_2_bdx_room_entry_100x100
+  xl: -50
+  xh: 50
+  yl: -50
+  yh: 50
+  bin_width: 0.1
+# - id: 101
+#   name: fl_101_above_soil
+#   zl: 5096
+#   zh: 5196
+#   xl: -50
+#   xh: 50
+#   bin_width: 0.5
