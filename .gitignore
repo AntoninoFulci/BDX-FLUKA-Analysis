@@ -59,10 +59,6 @@ Thumbs.db
 # Output files
 output/
 plots/
-*.pdf
-*.png
-*.eps
-*.log
 
 # Backup files
 *~
