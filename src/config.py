@@ -7,10 +7,13 @@ from utils import format_energy
 
 @dataclass
 class ComparisonConfig:
-    files: List[str]
-    hists: List[str]
-    labels: List[str]
     output: str
+    files: List[str] = field(default_factory=list)
+    hists: List[str] = field(default_factory=list)  # Legacy names list; also accepted as combined rows via parser.
+    files_name: Optional[Union[List[List[str]], Dict[str, str]]] = None  # Preferred pairing config: [["file.root", "hist_name"], ...] or {"file.root": "hist_name"}
+    files_names_label: Optional[Union[List[List[str]], Dict[str, List[str]]]] = None  # Pairing with labels: [["file.root", "hist_name", "label"], ...] or {"file.root": ["hist_name", "label"]}
+    files_names_labels_order: Optional[Union[List[List[Union[str, int]]], Dict[str, List[Union[str, int]]]]] = None  # Pairing with labels and explicit legend order: [["file.root", "hist_name", "label", 0], ...]
+    labels: Optional[List[str]] = None  # Labels for each histogram. Can be auto-extracted from labels_and_colors if not provided.
     title: str = "Comparison"
     x_label: str = ""
     y_label: str = ""
@@ -22,10 +25,13 @@ class ComparisonConfig:
     y_max: Optional[float] = None
     output_directory: Optional[str] = None  # Custom output directory for this comparison
     plot_range: Optional[dict] = None       # Dictionary with x_range and y_range keys
-    colors: Optional[List[int]] = None      # Custom colors for each histogram (ROOT color codes)
+    colors: Optional[Union[List[Union[int, str]], str]] = None  # Custom colors: list of int/str codes, or scheme name ('kP6', 'kP8', 'kP10'). Supports int codes or named colors ('red','blue','kP6Red',...)
+    labels_and_colors: Optional[Union[List[List[Union[str, int, str]]], Dict[str, Union[int, str]]]] = None  # Labels and colors: list of [label, color_code_or_name] pairs or {label: color} dict. Colors can be int codes or string names.
     line_width: int = 2                     # Line thickness (same for all histograms)
     legend_position: str = "top_right"      # Legend position: top_right, top_left, bottom_right, bottom_left, center_right
     draw_option: str = "hist"               # Draw option for histograms (e.g., "hist", "histe", etc.)
+    draw_option_extra: Optional[str] = None  # Extra string appended to draw_option, e.g. "e" becomes "hist e" and "hist same e".
+    legend_order: Optional[List[Union[int, str]]] = None  # Custom legend order: list of indices (int) or label names (str), or mix both. Defaults to drawing order.
 
 @dataclass
 class SurfaceConfig:
@@ -121,6 +127,12 @@ class BoxSurfaceConfig:
         return (x_bins, y_bins, x_range[0], x_range[1], y_range[0], y_range[1], face_config["x_var"], face_config["y_var"])
 
 @dataclass
+class ConfigRequirement:
+    path: str
+    enabled: bool = True
+
+
+@dataclass
 class HistogramConfig:
     n_bins: int
     min_energy: float
@@ -206,10 +218,12 @@ class AnalysisConfig:
     surfaces: List[SurfaceConfig] = field(default_factory=list)
     histograms: List[HistogramConfig] = field(default_factory=list)
     output: OutputConfig = field(default_factory=OutputConfig)
+    remove_runsummary: bool = False  # Remove existing simulation_summary.root before analysis starts
     box_surfaces: List[BoxSurfaceConfig] = field(default_factory=list)
     new_variable: Optional[NewVariableConfig] = None
     new_variables: List[NewVariableConfig] = field(default_factory=list)
     variable_2d: Optional[Variable2DConfig] = None
+    requirements: List[ConfigRequirement] = field(default_factory=list)
     comparisons: List[ComparisonConfig] = field(default_factory=list)
     @classmethod
     def from_file(cls, config_path: Union[str, Path]) -> 'AnalysisConfig':
@@ -262,9 +276,198 @@ class AnalysisConfig:
             config_data['variable_2d'] = Variable2DConfig(**variable_2d_data)
         else:
             config_data['variable_2d'] = None
+
+        requirements_data = config_data.get('requirements', [])
+        normalized_requirements: List[ConfigRequirement] = []
+        if requirements_data:
+            if not isinstance(requirements_data, list):
+                raise ValueError("requirements section must be a list of requirement entries")
+            for idx, req in enumerate(requirements_data):
+                if isinstance(req, str):
+                    normalized_requirements.append(ConfigRequirement(path=req, enabled=True))
+                elif isinstance(req, list) and len(req) == 2:
+                    path, enabled = req
+                    if not isinstance(path, str) or not isinstance(enabled, bool):
+                        raise ValueError(
+                            f"Invalid requirement entry at index {idx}: expected [str, bool] for list format"
+                        )
+                    normalized_requirements.append(ConfigRequirement(path=path, enabled=enabled))
+                elif isinstance(req, dict):
+                    normalized_requirements.append(ConfigRequirement(**req))
+                else:
+                    raise ValueError(
+                        f"Invalid requirement entry at index {idx}: expected a string, [str, bool] list, or mapping with path/enabled"
+                    )
+        config_data['requirements'] = normalized_requirements
+
         comparisons_data = config_data.get('comparisons', [])
         if comparisons_data:
-            config_data['comparisons'] = [ComparisonConfig(**cmp) for cmp in comparisons_data]
+            normalized_comparisons = []
+            for cmp in comparisons_data:
+                if not isinstance(cmp, dict):
+                    raise ValueError("Each comparison entry must be a mapping/object.")
+
+                cmp_copy = dict(cmp)
+                files_names_labels_order_data = cmp_copy.get('files_names_labels_order', None)
+                files_names_label_data = cmp_copy.get('files_names_label', None)
+                files_name_data = cmp_copy.get('files_name', None)
+                hists_data = cmp_copy.get('hists', None)
+
+                if isinstance(hists_data, list) and hists_data and all(isinstance(row, (list, tuple)) for row in hists_data):
+                    rows: List[Tuple[str, str, str, Union[str, int], int]] = []
+                    for idx, row in enumerate(hists_data):
+                        if not isinstance(row, (list, tuple)) or len(row) != 5:
+                            raise ValueError(
+                                f"Invalid hists entry at index {idx}: expected [file_path, hist_name, label, color, order]."
+                            )
+                        file_path, hist_name, label, color, order = row
+                        if (
+                            not isinstance(file_path, str)
+                            or not isinstance(hist_name, str)
+                            or not isinstance(label, str)
+                            or not isinstance(color, (str, int))
+                            or not isinstance(order, int)
+                        ):
+                            raise ValueError(
+                                f"Invalid hists entry at index {idx}: expected [str, str, str, (str|int), int]."
+                            )
+                        rows.append((file_path, hist_name, label, color, order))
+
+                    cmp_copy['files'] = [file_path for file_path, _, _, _, _ in rows]
+                    cmp_copy['hists'] = [hist_name for _, hist_name, _, _, _ in rows]
+                    cmp_copy['labels'] = [label for _, _, label, _, _ in rows]
+                    cmp_copy['colors'] = [color for _, _, _, color, _ in rows]
+                    cmp_copy['legend_order'] = sorted(range(len(rows)), key=lambda i: rows[i][4])
+                elif files_names_labels_order_data is not None:
+                    rows: List[Tuple[str, str, str, int]] = []
+                    if isinstance(files_names_labels_order_data, dict):
+                        for file_path, values in files_names_labels_order_data.items():
+                            if (
+                                not isinstance(file_path, str)
+                                or not isinstance(values, (list, tuple))
+                                or len(values) != 3
+                            ):
+                                raise ValueError(
+                                    "Invalid files_names_labels_order dictionary entry: expected "
+                                    '{"file.root": ["hist_name", "label", order]}.'
+                                )
+                            hist_name, label, order = values
+                            if not isinstance(hist_name, str) or not isinstance(label, str) or not isinstance(order, int):
+                                raise ValueError(
+                                    "Invalid files_names_labels_order dictionary entry: hist_name/label must be strings and order must be int."
+                                )
+                            rows.append((file_path, hist_name, label, order))
+                    elif isinstance(files_names_labels_order_data, list):
+                        for idx, row in enumerate(files_names_labels_order_data):
+                            if not isinstance(row, (list, tuple)) or len(row) != 4:
+                                raise ValueError(
+                                    f"Invalid files_names_labels_order entry at index {idx}: "
+                                    "expected [file_path, hist_name, label, order]."
+                                )
+                            file_path, hist_name, label, order = row
+                            if not isinstance(file_path, str) or not isinstance(hist_name, str) or not isinstance(label, str) or not isinstance(order, int):
+                                raise ValueError(
+                                    f"Invalid files_names_labels_order entry at index {idx}: "
+                                    "file_path/hist_name/label must be strings and order must be int."
+                                )
+                            rows.append((file_path, hist_name, label, order))
+                    else:
+                        raise ValueError("Invalid files_names_labels_order type: expected list or dictionary.")
+
+                    cmp_copy['files_names_labels_order'] = [
+                        [file_path, hist_name, label, order]
+                        for file_path, hist_name, label, order in rows
+                    ]
+                    cmp_copy['files'] = [file_path for file_path, _, _, _ in rows]
+                    cmp_copy['hists'] = [hist_name for _, hist_name, _, _ in rows]
+                    cmp_copy['labels'] = [label for _, _, label, _ in rows]
+
+                    order_indices = sorted(
+                        range(len(rows)),
+                        key=lambda i: rows[i][3],
+                    )
+                    cmp_copy['legend_order'] = order_indices
+                elif files_names_label_data is not None:
+                    rows: List[Tuple[str, str, str]] = []
+                    if isinstance(files_names_label_data, dict):
+                        for file_path, values in files_names_label_data.items():
+                            if (
+                                not isinstance(file_path, str)
+                                or not isinstance(values, (list, tuple))
+                                or len(values) != 2
+                            ):
+                                raise ValueError(
+                                    "Invalid files_names_label dictionary entry: expected "
+                                    '{"file.root": ["hist_name", "label"]}.'
+                                )
+                            hist_name, label = values
+                            if not isinstance(hist_name, str) or not isinstance(label, str):
+                                raise ValueError(
+                                    "Invalid files_names_label dictionary entry: hist_name and label must be strings."
+                                )
+                            rows.append((file_path, hist_name, label))
+                    elif isinstance(files_names_label_data, list):
+                        for idx, row in enumerate(files_names_label_data):
+                            if not isinstance(row, (list, tuple)) or len(row) != 3:
+                                raise ValueError(
+                                    f"Invalid files_names_label entry at index {idx}: "
+                                    "expected [file_path, hist_name, label]."
+                                )
+                            file_path, hist_name, label = row
+                            if not isinstance(file_path, str) or not isinstance(hist_name, str) or not isinstance(label, str):
+                                raise ValueError(
+                                    f"Invalid files_names_label entry at index {idx}: "
+                                    "file_path, hist_name, and label must be strings."
+                                )
+                            rows.append((file_path, hist_name, label))
+                    else:
+                        raise ValueError("Invalid files_names_label type: expected list or dictionary.")
+
+                    cmp_copy['files_names_label'] = [
+                        [file_path, hist_name, label]
+                        for file_path, hist_name, label in rows
+                    ]
+                    cmp_copy['files'] = [file_path for file_path, _, _ in rows]
+                    cmp_copy['hists'] = [hist_name for _, hist_name, _ in rows]
+                    cmp_copy['labels'] = [label for _, _, label in rows]
+                elif files_name_data is not None:
+                    pairs: List[Tuple[str, str]] = []
+                    if isinstance(files_name_data, dict):
+                        for file_path, hist_name in files_name_data.items():
+                            if not isinstance(file_path, str) or not isinstance(hist_name, str):
+                                raise ValueError("Invalid files_name entry: dictionary keys/values must be strings.")
+                            pairs.append((file_path, hist_name))
+                    elif isinstance(files_name_data, list):
+                        for idx, pair in enumerate(files_name_data):
+                            if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+                                raise ValueError(
+                                    f"Invalid files_name entry at index {idx}: expected [file_path, hist_name]."
+                                )
+                            file_path, hist_name = pair
+                            if not isinstance(file_path, str) or not isinstance(hist_name, str):
+                                raise ValueError(
+                                    f"Invalid files_name entry at index {idx}: file_path and hist_name must be strings."
+                                )
+                            pairs.append((file_path, hist_name))
+                    else:
+                        raise ValueError("Invalid files_name type: expected list of pairs or dictionary.")
+
+                    cmp_copy['files_name'] = [[file_path, hist_name] for file_path, hist_name in pairs]
+                    cmp_copy['files'] = [file_path for file_path, _ in pairs]
+                    cmp_copy['hists'] = [hist_name for _, hist_name in pairs]
+                else:
+                    files = cmp_copy.get('files', [])
+                    hists = cmp_copy.get('hists', [])
+                    if not files or not hists:
+                        raise ValueError("Comparison must provide either files_name or both files and hists.")
+
+                if len(cmp_copy.get('files', [])) != len(cmp_copy.get('hists', [])):
+                    raise ValueError("Comparison configuration error: files and hists must have the same length.")
+                if cmp_copy.get('labels') is not None and len(cmp_copy.get('labels', [])) != len(cmp_copy.get('files', [])):
+                    raise ValueError("Comparison configuration error: labels must have the same length as files/hists.")
+
+                normalized_comparisons.append(ComparisonConfig(**cmp_copy))
+            config_data['comparisons'] = normalized_comparisons
         else:
             config_data['comparisons'] = []
         return cls(**config_data)

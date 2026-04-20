@@ -79,3 +79,26 @@ def setup_root():
             print("Warning: Could not import pyROOTUtils styles, using default ROOT styles")
             
     return set_style, stileh1, stileh2, quiet
+
+
+def log_info(message: str):
+    print(f"[INFO] {message}")
+
+
+def log_success(message: str):
+    print(f"[ OK ] {message}")
+
+
+def log_warning(message: str):
+    print(f"[WARN] {message}")
+
+
+def log_error(message: str):
+    print(f"[ERR ] {message}")
+
+
+def log_section(title: str, width: int = 60, char: str = "="):
+    line = char * width
+    print(f"\n{line}")
+    print(title)
+    print(f"{line}\n")

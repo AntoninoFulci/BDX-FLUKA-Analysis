@@ -455,6 +455,51 @@ comparisons:
     y_min: 1.0e-10
     y_max: 1.0e-2
 ```
+
+Preferred paired format (backward-compatible with `files` + `hists`):
+
+```yaml
+comparisons:
+  - output: "comparison_plot"
+    files_name:
+      - ["file1.root", "hist_name_a"]
+      - ["file2.root", "hist_name_b"]
+    labels: ["Label 1", "Label 2"]
+```
+
+`files_name` also accepts dictionary shorthand:
+
+```yaml
+comparisons:
+  - output: "comparison_plot"
+    files_name:
+      "file1.root": "hist_name_a"
+      "file2.root": "hist_name_b"
+```
+
+You can also define labels in the same structure:
+
+```yaml
+comparisons:
+  - output: "comparison_plot"
+    files_names_label:
+      - ["file1.root", "hist_name_a", "Label 1"]
+      - ["file2.root", "hist_name_b", "Label 2"]
+```
+
+And optionally define explicit legend order with numeric indices:
+
+```yaml
+comparisons:
+  - output: "comparison_plot"
+    files_names_labels_order:
+      - ["file1.root", "hist_name_a", "Label 1", 1]
+      - ["file2.root", "hist_name_b", "Label 2", 0]
+```
+
+In `files_names_labels_order`, each row is:
+- `[file_path, histogram_name, label, order_index]`
+- lower `order_index` appears first in the legend
 ---
 
 *Last updated: January 2026*

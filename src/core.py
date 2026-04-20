@@ -6,6 +6,7 @@ from simulation_summary import SimulationSummary
 from utils import setup_root, format_energy
 from histogram import HistogramSet
 from comparison import compare_histograms_overlay
+from term_logging import section, info, success, warn, step, table_box
 
 class Analysis:
     def write_histograms(self, output_file, histograms):
@@ -42,11 +43,14 @@ class Analysis:
             output_dir = Path(config.output.directory)
             output_dir.mkdir(parents=True, exist_ok=True)
             summary_file_path = output_dir / "simulation_summary.root"
+            if getattr(config, 'remove_runsummary', False) and summary_file_path.exists():
+                warn(f"Removing existing simulation summary file: {summary_file_path}")
+                summary_file_path.unlink()
             if summary_file_path.exists():
-                print(f"Reading EOT from existing summary file: {summary_file_path}")
+                info(f"Reading EOT from existing summary file: {summary_file_path}")
                 self.EOT = SimulationSummary.read_eot_from_file(str(summary_file_path))
             else:
-                print(f"Creating new simulation summary file: {summary_file_path}")
+                info(f"Creating new simulation summary file: {summary_file_path}")
                 summary_file = ROOT.TFile(str(summary_file_path), "RECREATE")
                 RSummary = RDataFrame("RunSummary", self.root_dir)
                 summary = SimulationSummary(RSummary)
@@ -59,7 +63,7 @@ class Analysis:
     def process_comparisons(self):
         if not self.config.comparisons:
             return
-        print(f"\nProcessing {len(self.config.comparisons)} histogram comparisons...")
+        info(f"Processing {len(self.config.comparisons)} histogram comparisons...")
         for cmp in self.config.comparisons:
             # Propagate save_macro flag from analysis CLI into comparison config dynamically
             try:
@@ -75,30 +79,30 @@ class Analysis:
         if self.comparison_only:
             self.process_comparisons()
             return
-        print(f"\nProcessing {self.config.particle.name} analysis...")
-        print(f"Input directory: {self.config.input_directory}")
-        print(f"Number of histogram configurations: {len(self.config.histograms)}")
+        info(f"Processing {self.config.particle.name} analysis...")
+        info(f"Input directory: {self.config.input_directory}")
+        info(f"Number of histogram configurations: {len(self.config.histograms)}")
         for hist_config in self.config.histograms:
-            print(f"\nProcessing histogram configuration:")
-            print(f"  Number of bins: {hist_config.n_bins}")
-            print(f"  Energy range: {format_energy(hist_config.min_energy)} - {format_energy(hist_config.max_energy)}")
-            print(f"  Log bins: {hist_config.also_log_bins}")
+            section("Processing histogram configuration")
+            info(f"Number of bins: {hist_config.n_bins}")
+            info(f"Energy range: {format_energy(hist_config.min_energy)} - {format_energy(hist_config.max_energy)}")
+            info(f"Log bins: {hist_config.also_log_bins}")
             output_filename = self.config.output.get_filename(self.config.particle, hist_config)
-            print(f"  Output file: {output_filename}")
+            info(f"Output file: {output_filename}")
             REvents = RDataFrame("Events", self.root_dir)
             output_file = ROOT.TFile(output_filename, "RECREATE")
             histograms = self.create_histograms(REvents, hist_config)
-            print(f"  Writing histograms to {output_filename}...")
+            step(f"Writing histograms to {output_filename}...")
             self.write_histograms(output_file, histograms)
             output_file.Close()
-            print(f"  Completed: {output_filename}")
+            success(f"Completed: {output_filename}")
         self.process_comparisons()
 
     def create_histograms(self, REvents, hist_config):
         """Create histograms for a given configuration"""
-        print("  Creating filters...")
+        step("Creating filters...")
         filters = self._create_filters(REvents)
-        print("  Creating histograms...")
+        step("Creating histograms...")
         histograms = self._create_histograms(filters, hist_config)
         return histograms
 
@@ -147,10 +151,18 @@ class Analysis:
         """Create histograms using the filters"""
         from histogram import HistogramSet
         histograms = []
+
+        regular_surfaces = filters.get('surfaces', [])
+        if regular_surfaces:
+            table_box(
+                "Surfaces",
+                ["Surface", "ID"],
+                [[surface.name, str(surface.id)] for surface in regular_surfaces],
+            )
+
         # Regular surfaces
-        for surface in filters['surfaces']:
+        for surface in regular_surfaces:
             if surface.id in filters['surface_filters']:
-                print(f"  Processing surface {surface.name} (ID: {surface.id})")
                 surf_filter = filters['surface_filters'][surface.id]
                 energy_filtered = surf_filter.Filter(
                     f"{self.config.particle.variable} >= {hist_config.min_energy} && {self.config.particle.variable} <= {hist_config.max_energy}"

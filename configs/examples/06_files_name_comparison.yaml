@@ -1,0 +1,23 @@
+# Comparison example using files_name (preferred format)
+# Each item pairs one ROOT file path with one histogram name.
+
+comparisons:
+  - output: "files_name_demo"
+    title: "Comparison with files_name"
+    x_label: "E_{kin} [GeV]"
+    y_label: "n/(GeV*EOT)"
+    logx: true
+    logy: true
+
+    # Preferred format: list of [file_path, histogram_name] pairs
+    files_name:
+      - ["/path/to/config_a.root", "neutrons_h1_fl_1000_enclose_lin"]
+      - ["/path/to/config_b.root", "neutrons_h1_fl_1000_enclose_lin"]
+      - ["/path/to/config_c.root", "neutrons_h1_fl_1000_enclose_lin"]
+
+    labels:
+      - "Configuration A"
+      - "Configuration B"
+      - "Configuration C"
+
+    output_directory: "./comparison_output"

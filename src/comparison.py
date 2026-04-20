@@ -1,6 +1,7 @@
 # Comparison plotting utilities for overlaying histograms from multiple files
 from pathlib import Path
 from ROOT import TFile, TCanvas, TLegend
+from term_logging import info, warn, success
 
 try:
     from tabulate import tabulate
@@ -8,6 +9,32 @@ try:
     HAS_TABULATE_PANDAS = True
 except ImportError:
     HAS_TABULATE_PANDAS = False
+
+
+# Accessible Color Schemes (colorblind-friendly, from Kumbhare et al.)
+# These schemes are designed to be distinguishable for people with color vision deficiency
+ACCESSIBLE_COLOR_SCHEMES = {
+    'kP6': ['kP6Blue', 'kP6Yellow', 'kP6Red', 'kP6Grape', 'kP6Gray', 'kP6Violet'],
+    'kP8': ['kP8Blue', 'kP8Orange', 'kP8Red', 'kP8Pink', 'kP8Green', 'kP8Azure', 'kP8Gray', 'kP8Cyan'],
+    'kP10': ['kP10Blue', 'kP10Yellow', 'kP10Red', 'kP10Gray', 'kP10Violet', 'kP10Brown', 'kP10Orange', 'kP10Green', 'kP10Ash', 'kP10Cyan'],
+}
+
+# Default color scheme selection based on number of histograms
+DEFAULT_SCHEME_SELECTION = {
+    1: 'kP6',   # <= 6 histograms: use kP6
+    6: 'kP8',   # 7-8 histograms: use kP8
+    8: 'kP10',  # >= 9 histograms: use kP10
+}
+
+
+def _get_default_colors(num_hists):
+    """Select appropriate accessible color scheme based on histogram count."""
+    if num_hists <= 6:
+        return ACCESSIBLE_COLOR_SCHEMES['kP6']
+    elif num_hists <= 8:
+        return ACCESSIBLE_COLOR_SCHEMES['kP8']
+    else:
+        return ACCESSIBLE_COLOR_SCHEMES['kP10']
 
 
 # Excel files are now saved individually for each comparison
@@ -45,7 +72,7 @@ def _write_comparison_table_to_excel_and_print(cmp, integrals, errors, error_per
 		(h, short_path(f), label, fmt_sci(ing), fmt_sci(err), fmt_perc(errp))
 		for h, f, label, ing, err, errp in zip(cmp.hists, cmp.files, cmp.labels, integrals, errors, error_percents)
 	]
-	print("  Comparing the following histograms:")
+	info("Comparing the following histograms:")
 	print(tabulate(table, headers=["Histogram", "File", "Name", "Integral", "Error", "Error %"], tablefmt="rounded_grid"))
 
 	# Save to a single Excel file with multiple sheets
@@ -69,9 +96,9 @@ def _write_comparison_table_to_excel_and_print(cmp, integrals, errors, error_per
 			# Use the output name as sheet name (single sheet per file)
 			sheet_name = str(cmp.output)[:31]  # Excel sheet name max 31 chars
 			df.to_excel(writer, sheet_name=sheet_name, index=False)
-			print(f"    Saved comparison table to Excel file: {excel_path}")
+			success(f"Saved comparison table to Excel file: {excel_path}")
 	except ImportError:
-		print("  Comparing the following histograms:")
+		info("Comparing the following histograms:")
 		# Fallback: print without integral or error
 		for h, f, label in zip(cmp.hists, cmp.files, cmp.labels):
 			print(f"    {h:30} | {short_path(f):50} | {label}")
@@ -80,10 +107,54 @@ def compare_histograms_overlay(cmp, output_dir=None):
 	"""
 	Overlay multiple histograms from different files on the same canvas.
 	Args:
-		cmp: ComparisonConfig object (should have .files, .hists, .labels, .output, .title, .x_label, .y_label, .logx, .logy)
+		cmp: ComparisonConfig object (should have .files, .hists, .output, .title, .x_label, .y_label, .logx, .logy)
+		       .labels or .labels_and_colors for histogram labels (one is required)
 		output_dir: Optional override for output directory
 	"""
 	import ctypes
+	
+	# Extract or validate labels
+	def _extract_labels_from_config(cmp):
+		"""Extract labels from labels_and_colors if labels not provided, or validate labels field."""
+		# Priority: explicit labels field > extract from labels_and_colors
+		if cmp.labels is not None:
+			return cmp.labels
+		
+		# Try to extract from labels_and_colors
+		labels_and_colors_raw = getattr(cmp, 'labels_and_colors', None)
+		if labels_and_colors_raw is None:
+			raise ValueError("ComparisonConfig must have either 'labels' or 'labels_and_colors' field specified")
+		
+		# Extract labels from labels_and_colors
+		if isinstance(labels_and_colors_raw, dict):
+			# Dict format: {label: color, ...}
+			return list(labels_and_colors_raw.keys())
+		elif isinstance(labels_and_colors_raw, list):
+			# List format: [[label, color], ...]
+			try:
+				return [pair[0] for pair in labels_and_colors_raw]
+			except (IndexError, TypeError) as e:
+				raise ValueError(f"Could not extract labels from labels_and_colors: {e}")
+		else:
+			raise ValueError(f"labels_and_colors must be a list or dict, got {type(labels_and_colors_raw)}")
+	
+	# Set labels on config if not already set (for downstream code)
+	if cmp.labels is None:
+		cmp.labels = _extract_labels_from_config(cmp)
+
+	if len(cmp.files) != len(cmp.hists):
+		raise ValueError(
+			f"Comparison '{getattr(cmp, 'output', 'unknown')}' has mismatched lengths: "
+			f"files={len(cmp.files)} hists={len(cmp.hists)}. "
+			"Provide equal-length files/hists or use files_name."
+		)
+	if cmp.labels is not None and len(cmp.labels) != len(cmp.files):
+		raise ValueError(
+			f"Comparison '{getattr(cmp, 'output', 'unknown')}' has mismatched lengths: "
+			f"labels={len(cmp.labels)} files={len(cmp.files)}. "
+			"Ensure labels align with each file/hist input."
+		)
+	
 	# Open files and get integrals and errors for each histogram
 	files = [TFile(f, "READ") for f in cmp.files]
 	hists = [f.Get(hname) for f, hname in zip(files, cmp.hists)]
@@ -110,10 +181,10 @@ def compare_histograms_overlay(cmp, output_dir=None):
 	)
 	for i, h in enumerate(hists):
 		if not h:
-			print(f"    Warning: Could not find histogram '{cmp.hists[i]}' in file '{cmp.files[i]}'")
+			warn(f"Could not find histogram '{cmp.hists[i]}' in file '{cmp.files[i]}'")
 	hists = [h for h in hists if h]
 	if len(hists) < 2:
-		print("    Not enough histograms to compare.")
+		warn("Not enough histograms to compare.")
 		for f in files:
 			f.Close()
 		return
@@ -124,9 +195,31 @@ def compare_histograms_overlay(cmp, output_dir=None):
 		canvas.SetLogy()
 	if getattr(cmp, 'logx', False):
 		canvas.SetLogx()
+	
 	# Get colors and line width from config
-	default_colors = [2, 4, 8, 6, 1, 7, 9, 3]  # ROOT color codes
-	colors = getattr(cmp, 'colors', None) or default_colors
+	# Color resolution priority:
+	# 1. If colors is a scheme name string (e.g., 'kP6', 'kP8', 'kP10'), use that scheme
+	# 2. If colors is a list, use it directly
+	# 3. If not specified, auto-select accessible scheme based on histogram count
+	colors_raw = getattr(cmp, 'colors', None)
+	
+	if colors_raw is None:
+		# Auto-select accessible color scheme based on histogram count
+		colors = _get_default_colors(len(hists))
+	elif isinstance(colors_raw, str):
+		# Treat as scheme name
+		if colors_raw in ACCESSIBLE_COLOR_SCHEMES:
+			colors = ACCESSIBLE_COLOR_SCHEMES[colors_raw]
+		else:
+			warn(f"Unknown color scheme '{colors_raw}', using auto-selected accessible colors")
+			colors = _get_default_colors(len(hists))
+	elif isinstance(colors_raw, list):
+		# Use list directly (can contain int codes or color names)
+		colors = colors_raw
+	else:
+		warn("Invalid colors format, using auto-selected accessible colors")
+		colors = _get_default_colors(len(hists))
+	
 	line_width = getattr(cmp, 'line_width', 2)
 	
 	# Define legend positions (predefined shortcuts)
@@ -174,7 +267,7 @@ def compare_histograms_overlay(cmp, output_dir=None):
 
 	coords = _to_coords(legend_pos_raw)
 	if coords is None:
-		print(f"    Warning: Unknown or invalid legend_position '{legend_pos_raw}', using 'top_right'")
+		warn(f"Unknown or invalid legend_position '{legend_pos_raw}', using 'top_right'")
 		coords = legend_positions['top_right']
 
 	x1, y1, x2, y2 = coords
@@ -240,17 +333,6 @@ def compare_histograms_overlay(cmp, output_dir=None):
 		if y_axis_max is None:
 			y_axis_max = None  # Let ROOT autoscale
 
-	# Create cloned histograms for legend with thick lines
-	legend_hists = []
-	for i, h in enumerate(hists):
-		# Clone histogram for legend with thick lines
-		legend_hist = h.Clone(f"{h.GetName()}_legend")
-		color = colors[i % len(colors)]
-		legend_hist.SetLineColor(color)
-		legend_hist.SetMarkerColor(color)  # Set marker color to match line color
-		legend_hist.SetLineWidth(3)  # Always thick for legend
-		legend_hists.append(legend_hist)
-	
 	# Set axis ranges on all histograms before drawing
 	for h in hists:
 		if x_axis_min is not None and x_axis_max is not None:
@@ -262,19 +344,70 @@ def compare_histograms_overlay(cmp, output_dir=None):
 	
 	# Get draw option from config, default to "hist"
 	draw_option = getattr(cmp, 'draw_option', 'hist')
+	if isinstance(draw_option, str):
+		draw_option = draw_option.strip()
+	else:
+		draw_option = str(draw_option)
+
+	draw_option_extra = getattr(cmp, 'draw_option_extra', None)
+	if isinstance(draw_option_extra, str):
+		draw_option_extra = draw_option_extra.strip()
+	else:
+		draw_option_extra = None
+
+	if draw_option_extra:
+		first_draw_str = f"{draw_option} {draw_option_extra}".strip()
+		other_draw_str = f"{draw_option} same {draw_option_extra}".strip()
+	else:
+		first_draw_str = draw_option
+		other_draw_str = f"{draw_option} same"
 	
+	# Helper function to convert labels_and_colors to dict format
+	def _normalize_labels_and_colors(labels_and_colors_raw):
+		"""Convert labels_and_colors from list or dict format to dict."""
+		if labels_and_colors_raw is None:
+			return {}
+		if isinstance(labels_and_colors_raw, dict):
+			return labels_and_colors_raw
+		if isinstance(labels_and_colors_raw, list):
+			try:
+				return {pair[0]: pair[1] for pair in labels_and_colors_raw}
+			except (IndexError, TypeError) as e:
+				warn(f"Could not parse labels_and_colors format: {e}, skipping label-based colors")
+				return {}
+		warn(f"Unknown labels_and_colors format, expected list or dict, got {type(labels_and_colors_raw)}")
+		return {}
+	
+	# Function to resolve color for each histogram by label or index
+	def _get_histogram_color(hist_index, label, labels_and_colors_dict, colors_list, default_colors_list):
+		"""
+		Resolve color for a histogram.
+		Priority: 1) label-based lookup, 2) colors list by index, 3) default colors
+		"""
+		# First priority: label-based color mapping
+		if label in labels_and_colors_dict:
+			return labels_and_colors_dict[label]
+		# Second priority: colors list by index
+		if hist_index < len(colors_list):
+			return colors_list[hist_index]
+		# Third priority: cycle through default colors
+		return default_colors_list[hist_index % len(default_colors_list)]
+	
+	labels_and_colors_raw = getattr(cmp, 'labels_and_colors', None)
+	labels_and_colors_dict = _normalize_labels_and_colors(labels_and_colors_raw)
+	
+	# Draw all histograms (order drives the canvas setup, but legend order is independent)
 	for i, h in enumerate(hists):
-		color = colors[i % len(colors)]
+		color = _get_histogram_color(i, cmp.labels[i], labels_and_colors_dict, colors, colors)
 		h.SetLineColor(color)
 		h.SetMarkerColor(color)  # Set marker color to match line color
 		h.SetLineWidth(line_width)
 		if i == 0:
-			h.Draw(draw_option)
+			h.Draw(first_draw_str)
 		else:
-			h.Draw(f"{draw_option}same")
+			h.Draw(other_draw_str)
 		
-		# Add legend entry using the thick clone
-		legend.AddEntry(legend_hists[i], cmp.labels[i] if i < len(cmp.labels) else f"Hist {i+1}", "l")
+		# Set axis labels and title (same for all histograms)
 		if getattr(cmp, 'x_label', None):
 			h.GetXaxis().SetTitle(cmp.x_label)
 			h.GetXaxis().SetTitleOffset(1.6)  # Increase offset for better spacing
@@ -283,6 +416,60 @@ def compare_histograms_overlay(cmp, output_dir=None):
 			h.GetYaxis().SetTitleOffset(1.6)  # Increase offset for better spacing
 		if getattr(cmp, 'title', None):
 			h.SetTitle(cmp.title)
+	
+	# Create cloned histograms for legend with thick lines (using resolved colors)
+	legend_hists = []
+	for i, h in enumerate(hists):
+		legend_hist = h.Clone(f"{h.GetName()}_legend")
+		color = _get_histogram_color(i, cmp.labels[i], labels_and_colors_dict, colors, colors)
+		legend_hist.SetLineColor(color)
+		legend_hist.SetMarkerColor(color)  # Set marker color to match line color
+		legend_hist.SetLineWidth(3)  # Always thick for legend
+		legend_hists.append(legend_hist)
+	
+	# Resolve legend order: convert mixed list of indices/labels to indices
+	def _resolve_legend_order(legend_order_raw, labels, num_hists):
+		"""
+		Convert legend_order_raw (list of int indices or str labels or mix) to list of indices.
+		Returns list of valid indices in desired legend order.
+		If legend_order_raw is None, returns range(num_hists) (drawing order).
+		"""
+		if legend_order_raw is None:
+			return list(range(num_hists))
+		
+		resolved_indices = []
+		for entry in legend_order_raw:
+			if isinstance(entry, int):
+				# It's an index
+				if 0 <= entry < num_hists:
+					resolved_indices.append(entry)
+				else:
+					warn(f"legend_order index {entry} out of range [0, {num_hists-1}], skipping")
+			elif isinstance(entry, str):
+				# It's a label name - find matching histogram index
+				try:
+					idx = labels.index(entry)
+					resolved_indices.append(idx)
+				except ValueError:
+					warn(f"legend_order label '{entry}' not found in labels {labels}, skipping")
+			else:
+				warn(f"legend_order entry '{entry}' has unsupported type {type(entry)}, skipping")
+		
+		# Fall back to drawing order if no valid entries resolved
+		if not resolved_indices:
+			warn("No valid legend_order entries, falling back to drawing order")
+			resolved_indices = list(range(num_hists))
+		
+		return resolved_indices
+	
+	# Get and resolve legend order
+	legend_order_raw = getattr(cmp, 'legend_order', None)
+	legend_indices = _resolve_legend_order(legend_order_raw, cmp.labels, len(hists))
+	
+	# Add legend entries in resolved order
+	for idx in legend_indices:
+		legend.AddEntry(legend_hists[idx], cmp.labels[idx] if idx < len(cmp.labels) else f"Hist {idx+1}", "l")
+	
 	legend.SetFillStyle(0)
 	legend.SetBorderSize(1)
 	legend.Draw()
@@ -297,13 +484,13 @@ def compare_histograms_overlay(cmp, output_dir=None):
 	Path(outdir).mkdir(parents=True, exist_ok=True)
 	out_pdf_path = str(Path(outdir) / f"{cmp.output}.pdf")
 	canvas.SaveAs(out_pdf_path)
-	print(f"    Saved comparison plot: {out_pdf_path}")
+	success(f"Saved comparison plot: {out_pdf_path}")
 	# Optionally save ROOT macro (.C) alongside PDF when requested in config
 	try:
 		if getattr(cmp, 'save_macro', False):
 			out_macro_path = str(Path(outdir) / f"{cmp.output}.C")
 			canvas.SaveAs(out_macro_path)
-			print(f"    Saved comparison macro: {out_macro_path}")
+			success(f"Saved comparison macro: {out_macro_path}")
 	except Exception:
 		pass
 

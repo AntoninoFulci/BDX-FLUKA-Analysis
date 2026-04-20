@@ -14,6 +14,7 @@ import csv
 import ROOT
 from utils import setup_root
 from simulation_summary import SimulationSummary
+from term_logging import info, warn, success, step, table_box
 
 
 class Exporter:
@@ -72,15 +73,15 @@ class Exporter:
         # Find and sort all analysis ROOT files (exclude simulation_summary.root)
         root_files = self._get_sorted_analysis_files(output_dir, particle_name, energy_ranges)
         if not root_files:
-            print(f"No analysis ROOT files found in {output_dir}")
+            warn(f"No analysis ROOT files found in {output_dir}")
             return
         
-        print(f"Found {len(root_files)} analysis ROOT files")
-        print(f"Exporting histograms to PDF in {plots_dir}")
+        info(f"Found {len(root_files)} analysis ROOT files")
+        info(f"Exporting histograms to PDF in {plots_dir}")
         
         # Process each ROOT file
         for i, root_file_path in enumerate(root_files):
-            print(f"\nProcessing file {i+1}/{len(root_files)}: {root_file_path.name}")
+            step(f"Processing file {i+1}/{len(root_files)}: {root_file_path.name}")
             
             # Extract binning and energy range from filename
             binning_energy_info = self._extract_binning_energy_from_filename(root_file_path.stem)
@@ -91,7 +92,7 @@ class Exporter:
             # Process the ROOT file
             self._export_histograms_from_file(root_file_path, output_dir=str(plots_dir), name_prefix=prefix, indent_print="    ")
         
-        print(f"\nCompleted PDF export. All plots saved in: {plots_dir}")
+        success(f"Completed PDF export. All plots saved in: {plots_dir}")
 
     def export_histogram_statistics(self, output_dir: str,
                                     particle_name: Optional[str] = None,
@@ -120,7 +121,7 @@ class Exporter:
         sorted_files = self._get_sorted_analysis_files(base_dir, particle_name, energy_ranges)
 
         if not sorted_files:
-            print(f"No analysis ROOT files found in {base_dir}")
+            warn(f"No analysis ROOT files found in {base_dir}")
             return
 
         rows = []
@@ -338,7 +339,7 @@ class Exporter:
                 # If formatting fails, leave the file as written
                 pass
 
-            print(f"Histogram statistics saved to: {excel_path}")
+            success(f"Histogram statistics saved to: {excel_path}")
         except Exception as exc:
             # Fallback to CSV
             csv_path = excel_path.with_suffix('.csv')
@@ -350,7 +351,7 @@ class Exporter:
                 ])
                 writer.writeheader()
                 writer.writerows(rows)
-            print(f"Excel export unavailable ({exc}). CSV written to: {csv_path}")
+            warn(f"Excel export unavailable ({exc}). CSV written to: {csv_path}")
     
     def _sort_files_by_energy_ranges(self, root_files: List[Path], energy_ranges: List[Tuple[float, float]]) -> List[Path]:
         """
@@ -454,15 +455,8 @@ class Exporter:
         # Delegate to unified implementation; keep method for backward-compatibility inside class
         self._export_histograms_from_file(root_file_path, output_dir=str(plots_dir), name_prefix=prefix, indent_print="    ")
     
-    def _print_histogram_statistics(self, histogram, hist_name: str, indent: str = "") -> None:
-        """
-        Print statistical information for a histogram.
-        
-        Args:
-            histogram: ROOT histogram object
-            hist_name: Name of the histogram
-            indent: Indentation string for output formatting
-        """
+    def _get_histogram_statistics_row(self, histogram, hist_name: str) -> List[str]:
+        """Compute and format one histogram statistics row."""
         error = ctypes.c_double(0)
         if histogram.InheritsFrom("TH2"):
             integral = histogram.IntegralAndError(
@@ -482,9 +476,20 @@ class Exporter:
             )
         percent_error = (error.value / integral) * 100 if integral != 0 else 0
         entries = histogram.GetEntries()
-        
-        print(f"{indent}{hist_name}: {integral:.2E} ± {error.value:.2E} ({percent_error:.2f}%)")
-        print(f"{indent}  Entries: {entries}")
+
+        hist_label_width = 42
+        hist_label = (
+            hist_name
+            if len(hist_name) <= hist_label_width
+            else f"...{hist_name[-(hist_label_width - 3):]}"
+        )
+        return [
+            hist_label,
+            f"{integral:.2E}",
+            f"{error.value:.2E}",
+            f"{percent_error:.2f}",
+            f"{entries:.2f}",
+        ]
 
     # -----------------------
     # Internal helper methods
@@ -541,13 +546,14 @@ class Exporter:
         root_file = ROOT.TFile(str(root_file_path), "READ")
         if not root_file or root_file.IsZombie():
             warning_indent = indent_print if indent_print else ""
-            print(f"{warning_indent}Warning: Could not open ROOT file: {root_file_path}")
+            warn(f"{warning_indent}Could not open ROOT file: {root_file_path}")
             return
 
         keys = root_file.GetListOfKeys()
         set_style, style_h1, style_h2, quiet = self.style_env
 
         histogram_count = 0
+        stats_rows: List[List[str]] = []
         for key in keys:
             obj = key.ReadObj()
             if not obj.InheritsFrom("TH1"):
@@ -588,10 +594,18 @@ class Exporter:
 
             # Print integral for 1D 'lin' histograms
             if (not is_2d) and ("lin" in hist_name) and self.verbose:
-                self._print_histogram_statistics(obj, hist_name, indent=indent_print)
+                stats_rows.append(self._get_histogram_statistics_row(obj, hist_name))
+
+        if self.verbose and stats_rows:
+            table_box(
+                title=f"Histogram Statistics - {root_file_path.name}",
+                headers=["Histogram", "I", "E", "E%", "N"],
+                rows=stats_rows,
+                color_code="94",
+            )
 
         if indent_print:
-            print(f"{indent_print}Exported {histogram_count} histograms from {root_file_path.name}")
+            success(f"{indent_print}Exported {histogram_count} histograms from {root_file_path.name}")
         root_file.Close()
 
 

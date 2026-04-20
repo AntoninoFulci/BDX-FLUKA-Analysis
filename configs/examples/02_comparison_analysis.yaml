@@ -34,3 +34,4 @@ comparisons:
       y_range: [1e-27, 1e-3]
     legend_position: [0.65, 0.94, 0.89, 0.81]
     draw_option: "hist"
+    draw_option_extra: "e"

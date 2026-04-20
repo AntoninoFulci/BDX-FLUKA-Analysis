@@ -2,6 +2,7 @@ import datetime
 import math
 import ROOT
 from typing import List, Tuple
+from term_logging import info, metric_box
 
 class SimulationSummary:
     """Class to handle processing and analysis of simulation summary data"""
@@ -34,7 +35,7 @@ class SimulationSummary:
             eot_value = tree.EOT
             
             summary_file.Close()
-            print(f"Read EOT from existing summary file: {eot_value}")
+            info(f"Read EOT from existing summary file: {eot_value}")
             return eot_value
             
         except Exception as e:
@@ -58,8 +59,14 @@ class SimulationSummary:
         min_start_time = self.RSummary.Min("StartTime").GetValue()
         max_start_time = self.RSummary.Max("StartTime").GetValue()
 
-        print(f"Total number of primaries simulated: {TotEvents.GetValue()}")
-        print(f"Mean AvgTime per primary: {MeanAvgTime:.3e} s")
+        metric_box(
+            "Run Summary",
+            [
+                ("Total primaries", f"{TotEvents.GetValue():.0f}"),
+                ("Mean AvgTime/primary", f"{MeanAvgTime:.3e} s"),
+            ],
+            color_code="94",
+        )
 
         # Create and fill summary tree
         tree = ROOT.TTree("SimSummary", "Summary of simulation")
