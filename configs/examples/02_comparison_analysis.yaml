@@ -26,6 +26,7 @@ comparisons:
     y_label: "n/(GeV*EOT)"
     logx: true
     logy: true
+    use_scientific_notation_x: true  # Enable (true) or disable (false) scientific notation for x-axis tick labels
     # colors: [1, 2, 4, 6, 7, 8 ]
     colors: [1, 4, 2, 6, 7]
     line_width: 1

@@ -416,6 +416,12 @@ def compare_histograms_overlay(cmp, output_dir=None):
 			h.GetYaxis().SetTitleOffset(1.6)  # Increase offset for better spacing
 		if getattr(cmp, 'title', None):
 			h.SetTitle(cmp.title)
+		
+		# Apply scientific notation formatting to x-axis for first histogram only
+		if i == 0:
+			use_scientific_notation_x = getattr(cmp, 'use_scientific_notation_x', True)
+			if use_scientific_notation_x:
+				h.GetXaxis().SetMaxDigits(2)
 	
 	# Create cloned histograms for legend with thick lines (using resolved colors)
 	legend_hists = []

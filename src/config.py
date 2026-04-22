@@ -19,6 +19,7 @@ class ComparisonConfig:
     y_label: str = ""
     logx: bool = False
     logy: bool = True
+    use_scientific_notation_x: bool = True  # Enable/disable scientific notation for x-axis tick labels
     x_min: Optional[float] = None
     x_max: Optional[float] = None
     y_min: Optional[float] = None
