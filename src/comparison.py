@@ -19,13 +19,6 @@ ACCESSIBLE_COLOR_SCHEMES = {
     'kP10': ['kP10Blue', 'kP10Yellow', 'kP10Red', 'kP10Gray', 'kP10Violet', 'kP10Brown', 'kP10Orange', 'kP10Green', 'kP10Ash', 'kP10Cyan'],
 }
 
-# Default color scheme selection based on number of histograms
-DEFAULT_SCHEME_SELECTION = {
-    1: 'kP6',   # <= 6 histograms: use kP6
-    6: 'kP8',   # 7-8 histograms: use kP8
-    8: 'kP10',  # >= 9 histograms: use kP10
-}
-
 
 def _get_default_colors(num_hists):
     """Select appropriate accessible color scheme based on histogram count."""

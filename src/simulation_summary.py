@@ -56,9 +56,6 @@ class SimulationSummary:
         MeanAvgTime = AvgTime.GetValue()
         EOT = TotEvents.GetValue()
 
-        min_start_time = self.RSummary.Min("StartTime").GetValue()
-        max_start_time = self.RSummary.Max("StartTime").GetValue()
-
         metric_box(
             "Run Summary",
             [

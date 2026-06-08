@@ -367,9 +367,6 @@ class Exporter:
         Returns:
             Sorted list of ROOT file paths
         """
-        # Create mapping from energy range to file
-        file_energy_map = {}
-        
         # Calculate energy spans for ordering
         energy_spans = [(max_e - min_e, min_e, max_e) for min_e, max_e in energy_ranges]
         
@@ -447,13 +444,6 @@ class Exporter:
                 return '_'.join(parts[2:])  # Return binning_minE_maxE
             else:
                 return "unknown"
-    
-    def _export_file_with_prefix(self, root_file_path: Path, plots_dir: Path, prefix: str) -> None:
-        """
-        Helper method to export histograms from a single ROOT file with organized naming.
-        """
-        # Delegate to unified implementation; keep method for backward-compatibility inside class
-        self._export_histograms_from_file(root_file_path, output_dir=str(plots_dir), name_prefix=prefix, indent_print="    ")
     
     def _get_histogram_statistics_row(self, histogram, hist_name: str) -> List[str]:
         """Compute and format one histogram statistics row."""

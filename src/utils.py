@@ -1,7 +1,6 @@
 import sys
 import os
 import ROOT
-from typing import List, Tuple
 import pint
 
 # Initialize the unit registry
@@ -30,14 +29,6 @@ def format_energy(energy_gev):
     else:
         return f"{energy.to('GeV').magnitude:.1f}GeV"
     
-def parse_energy_ranges(ranges_str: str) -> List[Tuple[float, float]]:
-    """Parse energy ranges from string input"""
-    ranges = []
-    for r in ranges_str.split(','):
-        min_e, max_e = map(float, r.split('-'))
-        ranges.append((min_e, max_e))
-    return ranges
-
 class QuietRoot:
     """A context manager to suppress ROOT warnings"""
     def __init__(self, level=ROOT.kWarning):
@@ -79,26 +70,3 @@ def setup_root():
             print("Warning: Could not import pyROOTUtils styles, using default ROOT styles")
             
     return set_style, stileh1, stileh2, quiet
-
-
-def log_info(message: str):
-    print(f"[INFO] {message}")
-
-
-def log_success(message: str):
-    print(f"[ OK ] {message}")
-
-
-def log_warning(message: str):
-    print(f"[WARN] {message}")
-
-
-def log_error(message: str):
-    print(f"[ERR ] {message}")
-
-
-def log_section(title: str, width: int = 60, char: str = "="):
-    line = char * width
-    print(f"\n{line}")
-    print(title)
-    print(f"{line}\n")
