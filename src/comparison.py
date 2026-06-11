@@ -44,11 +44,12 @@ def _smooth_hist_logspace(h, sigma, x_max=None):
     nb = h.GetNbinsX()
     y = np.array([h.GetBinContent(b + 1) for b in range(nb)])
     pos = y > 0
-    logy = np.where(pos, np.log(y), 0.0)
-    m = pos.astype(float)
-    num = gaussian_filter1d(logy * m, sigma=sigma)
-    den = gaussian_filter1d(m, sigma=sigma)
-    ysm = np.where(den > 0, np.exp(num / den), 0.0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        logy = np.where(pos, np.log(y), 0.0)
+        m = pos.astype(float)
+        num = gaussian_filter1d(logy * m, sigma=sigma)
+        den = gaussian_filter1d(m, sigma=sigma)
+        ysm = np.where(den > 0, np.exp(num / den), 0.0)
 
     idx = np.where(pos)[0]
     if len(idx) == 0:
