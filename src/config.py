@@ -33,6 +33,11 @@ class ComparisonConfig:
     draw_option: str = "hist"               # Draw option for histograms (e.g., "hist", "histe", etc.)
     draw_option_extra: Optional[str] = None  # Extra string appended to draw_option, e.g. "e" becomes "hist e" and "hist same e".
     legend_order: Optional[List[Union[int, str]]] = None  # Custom legend order: list of indices (int) or label names (str), or mix both. Defaults to drawing order.
+    smoothing: str = "off"                  # Smoothing mode: "off" | "overlay" (raw faint + smooth bold) | "replace" (smooth only)
+    smoothing_sigma: float = 10             # Gaussian width in BINS (not GeV); large = flatter, small = noisier
+    smooth_x_max: Optional[float] = None    # Force smoothed curve to stop at this x value; None = auto-clip to last filled bin
+    raw_alpha: float = 0.25                 # Alpha of the faint raw line (overlay mode only)
+    smooth_line_width: Optional[int] = None # Bold smoothed line thickness; None falls back to line_width
 
 @dataclass
 class SurfaceConfig:
