@@ -433,10 +433,12 @@ def compare_histograms_overlay(cmp, output_dir=None):
 	if smoothing_mode not in ('off', 'overlay', 'replace'):
 		warn(f"Unknown smoothing mode '{smoothing_mode}', using 'off'")
 		smoothing_mode = 'off'
-	smoothing_sigma = float(getattr(cmp, 'smoothing_sigma', 10) or 10)
+	smoothing_sigma_raw = getattr(cmp, 'smoothing_sigma', 10)
+	smoothing_sigma = float(smoothing_sigma_raw) if smoothing_sigma_raw is not None else 10.0
 	smooth_x_max_raw = getattr(cmp, 'smooth_x_max', None)
 	smooth_x_max = float(smooth_x_max_raw) if smooth_x_max_raw is not None else None
-	raw_alpha = float(getattr(cmp, 'raw_alpha', 0.25) or 0.25)
+	raw_alpha_raw = getattr(cmp, 'raw_alpha', 0.25)
+	raw_alpha = float(raw_alpha_raw) if raw_alpha_raw is not None else 0.25
 	smooth_lw_raw = getattr(cmp, 'smooth_line_width', None)
 	smooth_lw = int(smooth_lw_raw) if smooth_lw_raw is not None else line_width
 	smoothed_keep = []  # prevent Python GC of smoothed clones until SaveAs
