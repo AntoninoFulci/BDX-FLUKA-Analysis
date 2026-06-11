@@ -30,6 +30,45 @@ def _get_default_colors(num_hists):
         return ACCESSIBLE_COLOR_SCHEMES['kP10']
 
 
+def _smooth_hist_logspace(h, sigma, x_max=None):
+    """Log-space gaussian smoothing of a TH1 -> numpy array of smoothed bin contents.
+
+    Geometric mean in log space so the smoothed line passes through the middle of the
+    bins on a log-y plot. Empty bins are skipped via an occupancy weight; the result is
+    clipped to the first/last filled bin (or x_max) so it does not bleed past the data.
+    Ports check.ipynb cell 7b41bccb.
+    """
+    import numpy as np
+    from scipy.ndimage import gaussian_filter1d
+
+    nb = h.GetNbinsX()
+    y = np.array([h.GetBinContent(b + 1) for b in range(nb)])
+    pos = y > 0
+    logy = np.where(pos, np.log(y), 0.0)
+    m = pos.astype(float)
+    num = gaussian_filter1d(logy * m, sigma=sigma)
+    den = gaussian_filter1d(m, sigma=sigma)
+    ysm = np.where(den > 0, np.exp(num / den), 0.0)
+
+    idx = np.where(pos)[0]
+    if len(idx) == 0:
+        return ysm
+    lo, hi = idx[0], idx[-1]
+    if x_max is not None:
+        hi = min(hi, h.GetXaxis().FindBin(x_max) - 1)
+    ysm[:lo] = 0.0
+    ysm[hi + 1:] = 0.0
+    return ysm
+
+
+def _build_smoothed_clone(h, ysm, suffix="_smooth"):
+    """Clone h and overwrite its bin contents with the smoothed array ysm."""
+    hs = h.Clone(f"{h.GetName()}{suffix}")
+    for b in range(h.GetNbinsX()):
+        hs.SetBinContent(b + 1, float(ysm[b]))
+    return hs
+
+
 # Excel files are now saved individually for each comparison
 
 def _write_comparison_table_to_excel_and_print(cmp, integrals, errors, error_percents, output_dir=None):
