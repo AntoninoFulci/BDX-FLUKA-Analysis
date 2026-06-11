@@ -455,21 +455,27 @@ def compare_histograms_overlay(cmp, output_dir=None):
 			primary = h
 		else:
 			ysm = _smooth_hist_logspace(h, smoothing_sigma, smooth_x_max)
-			hs = _build_smoothed_clone(h, ysm)
-			hs.SetLineColor(color_int)
-			hs.SetMarkerColor(color_int)
-			hs.SetLineWidth(smooth_lw)
-			hs.SetStats(0)
-			smoothed_keep.append(hs)
-			if smoothing_mode == 'overlay':
-				h.SetLineColorAlpha(color_int, raw_alpha)
-				h.SetLineWidth(1)
+			if not ysm.any():
+				warn(f"Smoothing produced an empty curve for '{h.GetName()}' (no filled bins in range); drawing raw histogram instead")
+				h.SetLineWidth(line_width)
 				h.Draw(first_draw_str if first else other_draw_str)
-				hs.Draw(other_draw_str)
 				primary = h
-			else:  # replace
-				hs.Draw(first_draw_str if first else other_draw_str)
-				primary = hs
+			else:
+				hs = _build_smoothed_clone(h, ysm)
+				hs.SetLineColor(color_int)
+				hs.SetMarkerColor(color_int)
+				hs.SetLineWidth(smooth_lw)
+				hs.SetStats(0)
+				smoothed_keep.append(hs)
+				if smoothing_mode == 'overlay':
+					h.SetLineColorAlpha(color_int, raw_alpha)
+					h.SetLineWidth(1)
+					h.Draw(first_draw_str if first else other_draw_str)
+					hs.Draw(other_draw_str)
+					primary = h
+				else:  # replace
+					hs.Draw(first_draw_str if first else other_draw_str)
+					primary = hs
 
 		# Set axis labels and title on the primary (first-drawn) object
 		if getattr(cmp, 'x_label', None):

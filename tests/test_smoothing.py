@@ -55,3 +55,11 @@ def test_build_smoothed_clone_copies_contents():
     assert hs.GetName() == "h_src_smooth"
     assert hs.GetBinContent(16) == 42.0  # ROOT bin 16 == y index 15
     assert hs.GetBinContent(11) == 0.0
+
+
+def test_smooth_x_max_below_first_bin_returns_all_zeros():
+    h = _make_hist("h_below")
+    # filled bins are ROOT 11..21 (x in [10,21)); x_max=2.0 is below first filled bin
+    ysm = _smooth_hist_logspace(h, sigma=2, x_max=2.0)
+    assert len(ysm) == 100
+    assert not ysm.any()  # inverted clip range -> entirely zeroed
