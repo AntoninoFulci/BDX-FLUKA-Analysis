@@ -428,33 +428,66 @@ def compare_histograms_overlay(cmp, output_dir=None):
 	
 	labels_and_colors_raw = getattr(cmp, 'labels_and_colors', None)
 	labels_and_colors_dict = _normalize_labels_and_colors(labels_and_colors_raw)
-	
+	# --- smoothing configuration ---
+	smoothing_mode = getattr(cmp, 'smoothing', 'off')
+	if smoothing_mode not in ('off', 'overlay', 'replace'):
+		warn(f"Unknown smoothing mode '{smoothing_mode}', using 'off'")
+		smoothing_mode = 'off'
+	smoothing_sigma = float(getattr(cmp, 'smoothing_sigma', 10) or 10)
+	smooth_x_max_raw = getattr(cmp, 'smooth_x_max', None)
+	smooth_x_max = float(smooth_x_max_raw) if smooth_x_max_raw is not None else None
+	raw_alpha = float(getattr(cmp, 'raw_alpha', 0.25) or 0.25)
+	smooth_lw_raw = getattr(cmp, 'smooth_line_width', None)
+	smooth_lw = int(smooth_lw_raw) if smooth_lw_raw is not None else line_width
+	smoothed_keep = []  # prevent Python GC of smoothed clones until SaveAs
+
 	# Draw all histograms (order drives the canvas setup, but legend order is independent)
+	first = True
 	for i, h in enumerate(hists):
 		color = _get_histogram_color(i, cmp.labels[i], labels_and_colors_dict, colors, colors)
 		h.SetLineColor(color)
-		h.SetMarkerColor(color)  # Set marker color to match line color
-		h.SetLineWidth(line_width)
-		if i == 0:
-			h.Draw(first_draw_str)
+		h.SetMarkerColor(color)
+		color_int = h.GetLineColor()  # resolve name->int (SetLineColorAlpha needs an int)
+
+		if smoothing_mode == 'off':
+			h.SetLineWidth(line_width)
+			h.Draw(first_draw_str if first else other_draw_str)
+			primary = h
 		else:
-			h.Draw(other_draw_str)
-		
-		# Set axis labels and title (same for all histograms)
+			ysm = _smooth_hist_logspace(h, smoothing_sigma, smooth_x_max)
+			hs = _build_smoothed_clone(h, ysm)
+			hs.SetLineColor(color_int)
+			hs.SetMarkerColor(color_int)
+			hs.SetLineWidth(smooth_lw)
+			hs.SetStats(0)
+			smoothed_keep.append(hs)
+			if smoothing_mode == 'overlay':
+				h.SetLineColorAlpha(color_int, raw_alpha)
+				h.SetLineWidth(1)
+				h.Draw(first_draw_str if first else other_draw_str)
+				hs.Draw(other_draw_str)
+				primary = h
+			else:  # replace
+				hs.Draw(first_draw_str if first else other_draw_str)
+				primary = hs
+
+		# Set axis labels and title on the primary (first-drawn) object
 		if getattr(cmp, 'x_label', None):
-			h.GetXaxis().SetTitle(cmp.x_label)
-			h.GetXaxis().SetTitleOffset(1.6)  # Increase offset for better spacing
+			primary.GetXaxis().SetTitle(cmp.x_label)
+			primary.GetXaxis().SetTitleOffset(1.6)
 		if getattr(cmp, 'y_label', None):
-			h.GetYaxis().SetTitle(cmp.y_label)
-			h.GetYaxis().SetTitleOffset(1.6)  # Increase offset for better spacing
+			primary.GetYaxis().SetTitle(cmp.y_label)
+			primary.GetYaxis().SetTitleOffset(1.6)
 		if getattr(cmp, 'title', None):
-			h.SetTitle(cmp.title)
-		
-		# Apply scientific notation formatting to x-axis for first histogram only
-		if i == 0:
+			primary.SetTitle(cmp.title)
+
+		# Apply scientific notation formatting to x-axis for the first drawn object only
+		if first:
 			use_scientific_notation_x = getattr(cmp, 'use_scientific_notation_x', True)
 			if use_scientific_notation_x:
-				h.GetXaxis().SetMaxDigits(2)
+				primary.GetXaxis().SetMaxDigits(2)
+
+		first = False
 	
 	# Create cloned histograms for legend with thick lines (using resolved colors)
 	legend_hists = []
