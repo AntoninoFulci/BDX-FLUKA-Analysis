@@ -441,6 +441,25 @@ def compare_histograms_overlay(cmp, output_dir=None):
 	raw_alpha = float(raw_alpha_raw) if raw_alpha_raw is not None else 0.25
 	smooth_lw_raw = getattr(cmp, 'smooth_line_width', None)
 	smooth_lw = int(smooth_lw_raw) if smooth_lw_raw is not None else line_width
+	# Resolve which histograms to smooth (indices or labels); None = smooth all
+	smooth_hists_raw = getattr(cmp, 'smooth_hists', None)
+	if smooth_hists_raw is None:
+		smooth_set = None
+	else:
+		smooth_set = set()
+		for entry in smooth_hists_raw:
+			if isinstance(entry, int) and not isinstance(entry, bool):
+				if 0 <= entry < len(hists):
+					smooth_set.add(entry)
+				else:
+					warn(f"smooth_hists index {entry} out of range [0, {len(hists)-1}], skipping")
+			elif isinstance(entry, str):
+				try:
+					smooth_set.add(cmp.labels.index(entry))
+				except (ValueError, AttributeError):
+					warn(f"smooth_hists label '{entry}' not found in labels, skipping")
+			else:
+				warn(f"smooth_hists entry '{entry}' has unsupported type {type(entry)}, skipping")
 	smoothed_keep = []  # prevent Python GC of smoothed clones until SaveAs
 
 	# Draw all histograms (order drives the canvas setup, but legend order is independent)
@@ -451,7 +470,8 @@ def compare_histograms_overlay(cmp, output_dir=None):
 		h.SetMarkerColor(color)
 		color_int = h.GetLineColor()  # resolve name->int (SetLineColorAlpha needs an int)
 
-		if smoothing_mode == 'off':
+		apply_smooth = smoothing_mode != 'off' and (smooth_set is None or i in smooth_set)
+		if not apply_smooth:
 			h.SetLineWidth(line_width)
 			h.Draw(first_draw_str if first else other_draw_str)
 			primary = h

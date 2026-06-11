@@ -38,6 +38,7 @@ class ComparisonConfig:
     smooth_x_max: Optional[float] = None    # Force smoothed curve to stop at this x value; None = auto-clip to last filled bin
     raw_alpha: float = 0.25                 # Alpha of the faint raw line (overlay mode only)
     smooth_line_width: Optional[int] = None # Bold smoothed line thickness; None falls back to line_width
+    smooth_hists: Optional[List[Union[int, str]]] = None  # Which histograms to smooth: list of indices or labels; None = all. Only applies when smoothing != "off"; unselected histograms draw normally.
 
 @dataclass
 class SurfaceConfig:
