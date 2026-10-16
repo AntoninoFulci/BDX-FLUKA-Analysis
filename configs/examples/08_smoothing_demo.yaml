@@ -1,19 +1,17 @@
+# Compare two existing spectra; replace paths with your analysis outputs.
 comparisons:
-- hists:
-  - [/path/to/geometryA/analysis_neutrons.root, hflux_surf_bdx_room_entry, Geometry
-      A (BDX room entry surface), 1, 0]
-  - [/path/to/geometryB/analysis_neutrons.root, hflux_surf_bdx_room_entry, Geometry
-      B (BDX room entry surface), 2, 1]
-  output: neutron_flux_per_surface_smoothed
-  output_directory: /path/to/output/smoothing_demo
-  title: Neutron flux per surface
-  x_label: E_{kin} [GeV]
-  y_label: n/(GeV*cm^{2}*EOT)
-  logx: true
-  logy: true
-  line_width: 1
-  rebin: [2, 5]  # Separate figures ending in _rebin2 and _rebin5.
-  rebin_hists: [1]  # Rebin only the second input; its exact label also works.
-  smoothing: overlay
-  smoothing_sigma: 8  # Width in rebinned bins.
-  raw_alpha: 0.25
+  - output: smoothed_spectra
+    output_directory: ./results/comparisons
+    hists:
+      - [results/config_a.root, neutrons_h1_detector_log, Configuration A, kP6Blue, 0]
+      - [results/config_b.root, neutrons_h1_detector_log, Configuration B, kP6Red, 1]
+    title: Selective Gaussian smoothing
+    x_label: Kinetic energy [GeV]
+    y_label: n/(GeV EOT)
+    logx: true
+    logy: true
+    smoothing: overlay
+    smooth_hists: [1]
+    smoothing_sigma: 3
+    raw_alpha: 0.25
+    smooth_line_width: 2
