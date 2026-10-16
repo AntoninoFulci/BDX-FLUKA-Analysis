@@ -1,38 +1,18 @@
-# Simple comparison example - no input_directory needed
-# All file paths are specified directly in the files list
-
+# Generate these input analyses first, or replace the file/histogram names.
 comparisons:
-  # Basic energy range comparison  
-  - files:
-    - /Users/tonyf/Work/BDX/2025-11-21_BDX_NeutronArticle/GeometryBprop/Farm/FORWARD/analysis_neutrons_1000bins_0.1eV_6.0GeV.root
-    - /Users/tonyf/Work/BDX/2025-11-21_BDX_NeutronArticle/GeometryC1prop/Farm/FORWARD/analysis_neutrons_1000bins_0.1eV_6.0GeV.root
-    - /Users/tonyf/Work/BDX/2025-11-21_BDX_NeutronArticle/GeometryC2prop/Farm2/FORWARD/analysis_neutrons_1000bins_0.1eV_6.0GeV.root
- 
+  - output: config_comparison
+    output_directory: ./results/comparisons
     hists:
-      - neutrons_h1_fl_2_bdx_room_entry_100x100_log
-      - neutrons_h1_fl_2_bdx_room_entry_100x100_log
-      - neutrons_h1_fl_2_bdx_room_entry_100x100_log
-
-    labels:
-      - "BDX Room Entry (100x100 cm^{2})"
-      - "BDX Room Entry - W Radiator (100x100 cm^{2})"
-      - "BDX Room Entry - W Radiator - Horizontal pipe (100x100 cm^{2})"
-      # - "Above soil - W Radiator (100x100 cm^{2})"
-
-    output: "figure5_fullrange"
-    output_directory: "/Users/tonyf/Work/BDX/2025-11-21_BDX_NeutronArticle/ComparisonPlots/figure5"
-    title: "Neutron comparison"
-    x_label: "E_{kin} [GeV]"
-    y_label: "n/(GeV*EOT)"
+      - [results/config_a.root, neutrons_h1_detector_log, Configuration A, kP6Blue, 0]
+      - [results/config_b.root, neutrons_h1_detector_log, Configuration B, kP6Yellow, 1]
+      - [results/config_c.root, neutrons_h1_detector_log, Configuration C, kP6Red, 2]
+    title: Neutron spectrum comparison
+    x_label: Kinetic energy [GeV]
+    y_label: n/(GeV EOT)
     logx: true
     logy: true
-    use_scientific_notation_x: true  # Enable (true) or disable (false) scientific notation for x-axis tick labels
-    # colors: [1, 2, 4, 6, 7, 8 ]
-    colors: [1, 4, 2, 6, 7]
-    line_width: 1
-    plot_range:
-      x_range: [1e-7, 6]
-      y_range: [1e-27, 1e-3]
-    legend_position: [0.65, 0.94, 0.89, 0.81]
-    draw_option: "hist"
-    draw_option_extra: "e"
+    x_min: 0.0001
+    x_max: 10.0
+    line_width: 2
+    legend_position: top_right
+    draw_option: hist

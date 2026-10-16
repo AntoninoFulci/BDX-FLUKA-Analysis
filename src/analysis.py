@@ -7,15 +7,14 @@ import sys
 import os
 import glob
 import argparse
-from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
-from config import AnalysisConfig
-from core import Analysis
-from term_logging import section, info, success, warn, error, step, table_box
+from .config import AnalysisConfig
+from .core import Analysis
+from .term_logging import section, info, success, warn, error, step, table_box
 
 try:
-    from export_histograms import (
+    from .export_histograms import (
         export_all_analysis_histograms_to_pdf,
         export_histogram_statistics_to_excel,
     )
@@ -105,6 +104,7 @@ def process_single_config(config_path: str, args: argparse.Namespace, processed_
                 particle_name=config.particle.name,
                 energy_ranges=energy_ranges,
                 save_macro=args.save_macro,
+                output_config=config.output,
             )
             success("Histograms saved as PDF successfully.")
         elif not args.save_pdf:
@@ -124,6 +124,7 @@ def process_single_config(config_path: str, args: argparse.Namespace, processed_
                 energy_ranges=energy_ranges,
                 excel_filename="histogram_statistics.xlsx",
                 surface_dims=surface_dims,
+                output_config=config.output,
             )
             success("Histogram statistics saved as Excel file.")
         elif not args.save_hstat:
@@ -135,6 +136,9 @@ def process_single_config(config_path: str, args: argparse.Namespace, processed_
     except Exception as e:
         error(f"Error processing {config_path}: {str(e)}")
         return False
+    finally:
+        # Only ancestors on the active recursion path constitute a cycle.
+        processed_configs.remove(config_path)
 
 
 def main():

@@ -70,3 +70,22 @@ plots/
 analysis_*.root
 energy_*.root
 comparison_*.root
+
+# Temporary local validation outputs
+/tmp_validation/
+
+# Local tests and internal planning/review documentation
+/tests/
+/docs/
+.pytest_cache/
+.ruff_cache/
+
+# Local AI assistant instructions and settings
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.agents/
+.codex/
+.claude/
+.cursor/
+docs/

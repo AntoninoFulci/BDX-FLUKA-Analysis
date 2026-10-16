@@ -1,0 +1,17 @@
+# Compare two existing spectra; replace paths with your analysis outputs.
+comparisons:
+  - output: smoothed_spectra
+    output_directory: ./results/comparisons
+    hists:
+      - [results/config_a.root, neutrons_h1_detector_log, Configuration A, kP6Blue, 0]
+      - [results/config_b.root, neutrons_h1_detector_log, Configuration B, kP6Red, 1]
+    title: Selective Gaussian smoothing
+    x_label: Kinetic energy [GeV]
+    y_label: n/(GeV EOT)
+    logx: true
+    logy: true
+    smoothing: overlay
+    smooth_hists: [1]
+    smoothing_sigma: 3
+    raw_alpha: 0.25
+    smooth_line_width: 2

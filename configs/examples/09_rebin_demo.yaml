@@ -1,0 +1,17 @@
+# Each factor starts from the original files; Configuration A keeps its binning.
+comparisons:
+  - output: rebinned_spectra
+    output_directory: ./results/comparisons
+    hists:
+      - [results/config_a.root, neutrons_h1_detector_log, Configuration A, kP6Blue, 0]
+      - [results/config_b.root, neutrons_h1_detector_log, Configuration B, kP6Red, 1]
+    title: Selective rebin before smoothing
+    x_label: Kinetic energy [GeV]
+    y_label: n/(GeV EOT)
+    logx: true
+    logy: true
+    rebin: [1, 5, 10]
+    rebin_hists: [Configuration B]
+    smoothing: overlay
+    smooth_hists: [1]
+    smoothing_sigma: 2

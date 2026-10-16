@@ -1,104 +1,39 @@
-# Example configuration demonstrating labels_and_colors feature
-# The labels_and_colors parameter allows you to specify both labels and colors for histograms
-# in a single field, eliminating the need for separate labels and label_colors fields.
-
-# The labels_and_colors parameter accepts:
-# 1. List of [label, color_code] pairs:  labels_and_colors: [["No Radiator", 1], ["With Radiator", 2]]
-# 2. Dictionary format:                   labels_and_colors: {"No Radiator": 1, "With Radiator": 2}
-# 3. Labels are automatically extracted:  No need for separate 'labels' field
-
-# ROOT color codes: 1=black, 2=red, 3=green, 4=blue, 6=magenta, 7=cyan, 8=dark gray, 9=light gray
-
 comparisons:
-  # Example 1: Colors specified using list-of-pairs format
-  - files:
-      - "data/no_radiator.root"
-      - "data/with_radiator.root"
-      - "data/reference.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    output: "colors_by_label_list"
-    title: "Energy Spectrum (Colors by Label - List Format)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    # Specify labels and colors using list of [label, color_code] pairs
-    # Labels are automatically extracted from this field
-    labels_and_colors:
-      - ["No Radiator", 2]      # red
-      - ["With Radiator", 4]    # blue
-      - ["Reference", 1]        # black
-
-  # Example 2: Colors specified using dictionary format
-  - files:
-      - "data/no_radiator.root"
-      - "data/with_radiator.root"
-      - "data/reference.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    output: "colors_by_label_dict"
-    title: "Energy Spectrum (Colors by Label - Dict Format)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    # Specify labels and colors using dictionary {label: color_code}
-    # Labels are automatically extracted from dictionary keys
-    labels_and_colors:
-      "No Radiator": 2          # red
-      "With Radiator": 4        # blue
-      "Reference": 1            # black
-
-  # Example 3: Combining labels_and_colors with legend_order
-  - files:
-      - "data/no_radiator.root"
-      - "data/with_radiator.root"
-      - "data/reference.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    output: "colors_and_legend_order"
-    title: "Energy Spectrum (Colors + Custom Legend Order)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    # Assign specific labels and colors
-    labels_and_colors:
-      - ["No Radiator", 2]      # red
-      - ["With Radiator", 4]    # blue
-      - ["Reference", 1]        # black
-    # Legend entries appear in: Reference, With Radiator, No Radiator
-    legend_order:
-      - "Reference"
-      - "With Radiator"
-      - "No Radiator"
-    legend_position: "top_right"
-
-  # Example 4: With explicit labels field (overrides labels_and_colors extraction)
-  - files:
-      - "data/no_radiator.root"
-      - "data/with_radiator.root"
-      - "data/reference.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels:                      # Explicit labels (overrides extraction from labels_and_colors)
-      - "Sample A"
-      - "Sample B"
-      - "Sample C"
-    output: "explicit_labels"
-    title: "Energy Spectrum (Explicit Labels)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    # colors are applied by index (not by label when explicit labels are used)
-    labels_and_colors:
-      - ["No Radiator", 2]      # red
-      - ["With Radiator", 4]    # blue
-    colors: [6, 7, 8]           # Fallback colors for unmapped samples
-    legend_position: "bottom_right"
+- hists:
+  - [data/no_radiator.root, energy_spectrum, No Radiator, 2, 0]
+  - [data/with_radiator.root, energy_spectrum, With Radiator, 4, 1]
+  - [data/reference.root, energy_spectrum, Reference, 1, 2]
+  output: integer_colors
+  title: Energy Spectrum (Integer ROOT Colors)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+- hists:
+  - [data/no_radiator.root, energy_spectrum, No Radiator, kRed, 0]
+  - [data/with_radiator.root, energy_spectrum, With Radiator, kBlue, 1]
+  - [data/reference.root, energy_spectrum, Reference, kBlack, 2]
+  output: named_colors
+  title: Energy Spectrum (Named ROOT Colors)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+- hists:
+  - [data/no_radiator.root, energy_spectrum, No Radiator, 2, 2]
+  - [data/with_radiator.root, energy_spectrum, With Radiator, 4, 1]
+  - [data/reference.root, energy_spectrum, Reference, 1, 0]
+  output: colors_and_legend_order
+  title: Energy Spectrum (Colors + Custom Legend Order)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+  legend_position: top_right
+- hists:
+  - [data/no_radiator.root, energy_spectrum, Sample A, 6, 0]
+  - [data/with_radiator.root, energy_spectrum, Sample B, 7, 1]
+  - [data/reference.root, energy_spectrum, Sample C, 8, 2]
+  output: explicit_labels
+  title: Energy Spectrum (Explicit Labels)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+  legend_position: bottom_right

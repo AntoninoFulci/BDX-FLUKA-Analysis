@@ -1,188 +1,73 @@
-# Example configuration demonstrating accessible color schemes and named colors
-# This showcases ROOT's colorblind-friendly kP schemes: kP6, kP8, kP10
-# From: Kumbhare et al. "colourblind" package
-
-# Accessible Color Schemes
-# - kP6 (6 colors, up to 6 histograms): Blue, Yellow, Red, Grape, Gray, Violet
-# - kP8 (8 colors, 7-8 histograms): Blue, Orange, Red, Pink, Green, Azure, Gray, Cyan
-# - kP10 (10 colors, 9+ histograms): Blue, Yellow, Red, Gray, Violet, Brown, Orange, Green, Ash, Cyan
-
-# Colors can be specified as:
-# 1. Int codes: 1, 2, 4, 6, 7, 8, 9, 3
-# 2. String names: 'kP6Blue', 'kP8Red', 'kP10Orange', 'red', 'blue', etc.
-# 3. Scheme name: 'kP6', 'kP8', 'kP10' (auto-applies entire scheme)
-# 4. Auto-selected: if not specified, scheme selected based on histogram count
-
 comparisons:
-  # Example 1: Auto-selected scheme (no colors specified)
-  # With 5 histograms, automatically uses kP6 scheme
-  - files:
-      - "data/sample1.root"
-      - "data/sample2.root"
-      - "data/sample3.root"
-      - "data/sample4.root"
-      - "data/sample5.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels_and_colors:
-      - ["Sample 1", "kP6Blue"]
-      - ["Sample 2", "kP6Yellow"]
-      - ["Sample 3", "kP6Red"]
-      - ["Sample 4", "kP6Grape"]
-      - ["Sample 5", "kP6Gray"]
-    output: "auto_selected_kp6"
-    title: "Auto-selected kP6 Accessible Color Scheme"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-
-  # Example 2: Explicit kP6 scheme
-  - files:
-      - "data/sample1.root"
-      - "data/sample2.root"
-      - "data/sample3.root"
-      - "data/sample4.root"
-      - "data/sample5.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels_and_colors:
-      - ["Sample A", "kP6Blue"]
-      - ["Sample B", "kP6Yellow"]
-      - ["Sample C", "kP6Red"]
-      - ["Sample D", "kP6Grape"]
-      - ["Sample E", "kP6Gray"]
-    colors: "kP6"          # Explicitly use kP6 scheme
-    output: "explicit_kp6"
-    title: "Explicit kP6 Accessible Color Scheme"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    legend_position: "top_left"
-
-  # Example 3: kP8 scheme for 8 histograms
-  - files:
-      - "data/s1.root"
-      - "data/s2.root"
-      - "data/s3.root"
-      - "data/s4.root"
-      - "data/s5.root"
-      - "data/s6.root"
-      - "data/s7.root"
-      - "data/s8.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels_and_colors:
-      - ["S1", "kP8Blue"]
-      - ["S2", "kP8Orange"]
-      - ["S3", "kP8Red"]
-      - ["S4", "kP8Pink"]
-      - ["S5", "kP8Green"]
-      - ["S6", "kP8Azure"]
-      - ["S7", "kP8Gray"]
-      - ["S8", "kP8Cyan"]
-    colors: "kP8"          # Use kP8 for 8 histograms
-    output: "kp8_scheme"
-    title: "kP8 Accessible Color Scheme (8 colors)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-
-  # Example 4: kP10 scheme for 10 histograms (auto-selected if 9+ hists)
-  - files:
-      - "data/s1.root"
-      - "data/s2.root"
-      - "data/s3.root"
-      - "data/s4.root"
-      - "data/s5.root"
-      - "data/s6.root"
-      - "data/s7.root"
-      - "data/s8.root"
-      - "data/s9.root"
-      - "data/s10.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels_and_colors:
-      - ["S1", "kP10Blue"]
-      - ["S2", "kP10Yellow"]
-      - ["S3", "kP10Red"]
-      - ["S4", "kP10Gray"]
-      - ["S5", "kP10Violet"]
-      - ["S6", "kP10Brown"]
-      - ["S7", "kP10Orange"]
-      - ["S8", "kP10Green"]
-      - ["S9", "kP10Ash"]
-      - ["S10", "kP10Cyan"]
-    # colors not specified, automatically uses kP10 (9+ histograms)
-    output: "kp10_auto"
-    title: "kP10 Accessible Color Scheme (auto-selected for 10 colors)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-
-  # Example 5: Mix of named colors and indices
-  - files:
-      - "data/no_radiator.root"
-      - "data/with_radiator.root"
-      - "data/reference.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels_and_colors:
-      - ["No Radiator", "kP8Blue"]    # Named color
-      - ["With Radiator", 2]          # Int code (red)
-      - ["Reference", "kP8Red"]       # Named color
-    output: "mixed_colors"
-    title: "Mixed Color Specifications"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    legend_position: "bottom_right"
-
-  # Example 6: Custom color list (int codes)
-  - files:
-      - "data/sample1.root"
-      - "data/sample2.root"
-      - "data/sample3.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels_and_colors:
-      - ["Sample A", "red"]
-      - ["Sample B", "blue"]
-      - ["Sample C", "green"]
-    colors: [2, 4, 3]      # Custom int color codes (red, blue, green)
-    output: "custom_codes"
-    title: "Custom Color Codes"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    legend_order:
-      - "Sample C"
-      - "Sample A"
-      - "Sample B"
+- hists:
+  - [data/sample1.root, energy_spectrum, Sample 1, kP6Blue, 0]
+  - [data/sample2.root, energy_spectrum, Sample 2, kP6Yellow, 1]
+  - [data/sample3.root, energy_spectrum, Sample 3, kP6Red, 2]
+  - [data/sample4.root, energy_spectrum, Sample 4, kP6Grape, 3]
+  - [data/sample5.root, energy_spectrum, Sample 5, kP6Gray, 4]
+  output: kp6_samples
+  title: kP6 Accessible Color Scheme
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+- hists:
+  - [data/sample1.root, energy_spectrum, Sample A, kP6Blue, 0]
+  - [data/sample2.root, energy_spectrum, Sample B, kP6Yellow, 1]
+  - [data/sample3.root, energy_spectrum, Sample C, kP6Red, 2]
+  - [data/sample4.root, energy_spectrum, Sample D, kP6Grape, 3]
+  - [data/sample5.root, energy_spectrum, Sample E, kP6Gray, 4]
+  output: explicit_kp6
+  title: Explicit kP6 Accessible Color Scheme
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+  legend_position: top_left
+- hists:
+  - [data/s1.root, energy_spectrum, S1, kP8Blue, 0]
+  - [data/s2.root, energy_spectrum, S2, kP8Orange, 1]
+  - [data/s3.root, energy_spectrum, S3, kP8Red, 2]
+  - [data/s4.root, energy_spectrum, S4, kP8Pink, 3]
+  - [data/s5.root, energy_spectrum, S5, kP8Green, 4]
+  - [data/s6.root, energy_spectrum, S6, kP8Azure, 5]
+  - [data/s7.root, energy_spectrum, S7, kP8Gray, 6]
+  - [data/s8.root, energy_spectrum, S8, kP8Cyan, 7]
+  output: kp8_scheme
+  title: kP8 Accessible Color Scheme (8 colors)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+- hists:
+  - [data/s1.root, energy_spectrum, S1, kP10Blue, 0]
+  - [data/s2.root, energy_spectrum, S2, kP10Yellow, 1]
+  - [data/s3.root, energy_spectrum, S3, kP10Red, 2]
+  - [data/s4.root, energy_spectrum, S4, kP10Gray, 3]
+  - [data/s5.root, energy_spectrum, S5, kP10Violet, 4]
+  - [data/s6.root, energy_spectrum, S6, kP10Brown, 5]
+  - [data/s7.root, energy_spectrum, S7, kP10Orange, 6]
+  - [data/s8.root, energy_spectrum, S8, kP10Green, 7]
+  - [data/s9.root, energy_spectrum, S9, kP10Ash, 8]
+  - [data/s10.root, energy_spectrum, S10, kP10Cyan, 9]
+  output: kp10_scheme
+  title: kP10 Accessible Color Scheme (10 colors)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+- hists:
+  - [data/no_radiator.root, energy_spectrum, No Radiator, kP8Blue, 0]
+  - [data/with_radiator.root, energy_spectrum, With Radiator, 2, 1]
+  - [data/reference.root, energy_spectrum, Reference, kP8Red, 2]
+  output: mixed_colors
+  title: Mixed Color Specifications
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+  legend_position: bottom_right
+- hists:
+  - [data/sample1.root, energy_spectrum, Sample A, red, 1]
+  - [data/sample2.root, energy_spectrum, Sample B, blue, 2]
+  - [data/sample3.root, energy_spectrum, Sample C, green, 0]
+  output: custom_codes
+  title: Custom Color Codes
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true

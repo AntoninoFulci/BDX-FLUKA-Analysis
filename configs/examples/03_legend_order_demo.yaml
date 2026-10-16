@@ -1,76 +1,30 @@
-# Example configuration demonstrating legend_order feature
-# The legend_order parameter allows you to specify the order of legend entries
-# independently from the histogram drawing order. This is useful when you want
-# specific entries to appear in a particular sequence for readability.
-
-# The legend_order parameter accepts:
-# 1. List of histogram indices (0-based):       legend_order: [2, 0, 1]
-# 2. List of label names (strings):              legend_order: ["Simulation C", "Simulation A", "Simulation B"]
-# 3. Mixed list of indices and labels:           legend_order: [2, "Simulation A", 1]
-
 comparisons:
-  - files:
-      - "data/simulation_a.root"
-      - "data/simulation_b.root"
-      - "data/simulation_c.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels:
-      - "Simulation A"
-      - "Simulation B"
-      - "Simulation C"
-    output: "legend_order_by_label"
-    title: "Energy Spectrum Comparison (Legend Sorted by Name)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    # Legend entries appear in alphabetical order even though histograms draw in A, B, C order
-    legend_order:
-      - "Simulation A"
-      - "Simulation B"
-      - "Simulation C"
-
-  - files:
-      - "data/simulation_a.root"
-      - "data/simulation_b.root"
-      - "data/simulation_c.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels:
-      - "Simulation A"
-      - "Simulation B"
-      - "Simulation C"
-    output: "legend_order_by_index"
-    title: "Energy Spectrum Comparison (Legend Reversed)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    # Legend entries appear in reverse order (C, B, A) using indices
-    # Histograms still draw in order A, B, C (affecting axis setup)
-    legend_order: [2, 1, 0]
-    legend_position: "top_left"
-
-  - files:
-      - "data/simulation_a.root"
-      - "data/simulation_b.root"
-      - "data/simulation_c.root"
-    hists:
-      - "energy_spectrum"
-      - "energy_spectrum"
-      - "energy_spectrum"
-    labels:
-      - "Simulation A"
-      - "Simulation B"
-      - "Simulation C"
-    output: "legend_order_mixed"
-    title: "Energy Spectrum Comparison (Mixed Legend Order)"
-    x_label: "Energy (MeV)"
-    y_label: "Count"
-    logy: true
-    # Mixed: use indices and label names in same list
-    legend_order: [2, "Simulation A", 1]
-    legend_position: "bottom_right"
+- hists:
+  - [data/simulation_a.root, energy_spectrum, Simulation A, kP6Blue, 0]
+  - [data/simulation_b.root, energy_spectrum, Simulation B, kP6Yellow, 1]
+  - [data/simulation_c.root, energy_spectrum, Simulation C, kP6Red, 2]
+  output: legend_input_order
+  title: Energy Spectrum Comparison (Legend in Input Order)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+- hists:
+  - [data/simulation_a.root, energy_spectrum, Simulation A, kP6Blue, 2]
+  - [data/simulation_b.root, energy_spectrum, Simulation B, kP6Yellow, 1]
+  - [data/simulation_c.root, energy_spectrum, Simulation C, kP6Red, 0]
+  output: legend_reversed
+  title: Energy Spectrum Comparison (Legend Reversed)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+  legend_position: top_left
+- hists:
+  - [data/simulation_a.root, energy_spectrum, Simulation A, kP6Blue, 1]
+  - [data/simulation_b.root, energy_spectrum, Simulation B, kP6Yellow, 2]
+  - [data/simulation_c.root, energy_spectrum, Simulation C, kP6Red, 0]
+  output: legend_custom_order
+  title: Energy Spectrum Comparison (Custom Numeric Legend Order)
+  x_label: Energy (MeV)
+  y_label: Count
+  logy: true
+  legend_position: bottom_right
