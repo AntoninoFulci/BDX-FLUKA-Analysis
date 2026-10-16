@@ -70,3 +70,6 @@ plots/
 analysis_*.root
 energy_*.root
 comparison_*.root
+
+# Temporary local validation outputs
+/tmp_validation/

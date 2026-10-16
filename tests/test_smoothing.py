@@ -1,10 +1,8 @@
 # tests/test_smoothing.py
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import ROOT
 ROOT.gROOT.SetBatch(True)
-from comparison import _smooth_hist_logspace, _build_smoothed_clone
+from src.comparison import _smooth_hist_logspace, _build_smoothed_clone
 
 
 def _make_hist(name="h"):

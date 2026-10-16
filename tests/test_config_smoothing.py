@@ -1,8 +1,6 @@
 # tests/test_config_smoothing.py
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from config import ComparisonConfig
+from src.config import ComparisonConfig
 
 
 def test_smoothing_defaults():

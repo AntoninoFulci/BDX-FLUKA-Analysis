@@ -1,12 +1,12 @@
 import ROOT
 from ROOT import RDataFrame
 from pathlib import Path
-from config import AnalysisConfig
-from simulation_summary import SimulationSummary
-from utils import setup_root, format_energy
-from histogram import HistogramSet
-from comparison import compare_histograms_overlay
-from term_logging import section, info, success, warn, step, table_box
+from .config import AnalysisConfig
+from .simulation_summary import SimulationSummary
+from .utils import setup_root, format_energy
+from .histogram import HistogramSet
+from .comparison import compare_histograms_overlay
+from .term_logging import section, info, success, warn, step, table_box
 
 class Analysis:
     def write_histograms(self, output_file, histograms):
@@ -32,7 +32,6 @@ class Analysis:
             (not config.histograms)
             and (not config.surfaces)
             and (not config.box_surfaces)
-            and (not config.variable_2d)
             and (not config.new_variable)
             and (not config.new_variables)
             and config.comparisons
@@ -47,15 +46,18 @@ class Analysis:
                 warn(f"Removing existing simulation summary file: {summary_file_path}")
                 summary_file_path.unlink()
             if summary_file_path.exists():
-                info(f"Reading EOT from existing summary file: {summary_file_path}")
+                warn(
+                    f"Reusing cached EOT from {summary_file_path}; input identity is not verified. "
+                    "If the input dataset changed, use --remove-runsummary to regenerate it "
+                    "or choose a different output directory."
+                )
                 self.EOT = SimulationSummary.read_eot_from_file(str(summary_file_path))
             else:
                 info(f"Creating new simulation summary file: {summary_file_path}")
-                summary_file = ROOT.TFile(str(summary_file_path), "RECREATE")
-                RSummary = RDataFrame("RunSummary", self.root_dir)
-                summary = SimulationSummary(RSummary)
-                self.EOT = summary.process_summary(summary_file)
-                summary_file.Close()
+                with ROOT.TFile(str(summary_file_path), "RECREATE") as summary_file:
+                    RSummary = RDataFrame("RunSummary", self.root_dir)
+                    summary = SimulationSummary(RSummary)
+                    self.EOT = summary.process_summary(summary_file)
 
     def setup_root(self):
         self.set_style, self.stileh1, self.stileh2, self.quiet = setup_root()
@@ -82,19 +84,27 @@ class Analysis:
         info(f"Processing {self.config.particle.name} analysis...")
         info(f"Input directory: {self.config.input_directory}")
         info(f"Number of histogram configurations: {len(self.config.histograms)}")
-        for hist_config in self.config.histograms:
+        output_filenames = [
+            self.config.output.get_filename(self.config.particle, hist_config)
+            for hist_config in self.config.histograms
+        ]
+        if len(set(output_filenames)) != len(output_filenames):
+            raise ValueError(
+                "Histogram configurations produce the same output filename; "
+                "adjust the energy ranges, bin counts, or output format_template."
+            )
+        for hist_config, output_filename in zip(self.config.histograms, output_filenames):
             section("Processing histogram configuration")
             info(f"Number of bins: {hist_config.n_bins}")
             info(f"Energy range: {format_energy(hist_config.min_energy)} - {format_energy(hist_config.max_energy)}")
             info(f"Log bins: {hist_config.also_log_bins}")
-            output_filename = self.config.output.get_filename(self.config.particle, hist_config)
             info(f"Output file: {output_filename}")
             REvents = RDataFrame("Events", self.root_dir)
-            output_file = ROOT.TFile(output_filename, "RECREATE")
-            histograms = self.create_histograms(REvents, hist_config)
-            step(f"Writing histograms to {output_filename}...")
-            self.write_histograms(output_file, histograms)
-            output_file.Close()
+            Path(output_filename).parent.mkdir(parents=True, exist_ok=True)
+            with ROOT.TFile(output_filename, "RECREATE") as output_file:
+                histograms = self.create_histograms(REvents, hist_config)
+                step(f"Writing histograms to {output_filename}...")
+                self.write_histograms(output_file, histograms)
             success(f"Completed: {output_filename}")
         self.process_comparisons()
 
@@ -147,9 +157,27 @@ class Analysis:
             'box_filters': box_filters
         }
 
+    def _create_energy_histograms(self, dataframe, hist_config, surface_name):
+        """Book spectra after the caller applies its energy and spatial selection."""
+        particle = self.config.particle
+        name = f"{particle.name}_h1_{surface_name}"
+        title = f"; {particle.variable} [GeV]; n/(GeV * EOT)"
+        with self.set_style(self.stileh1):
+            h_log = None
+            if hist_config.also_log_bins:
+                h_log = dataframe.Histo1D(
+                    (f"{name}_log", title, hist_config.n_bins, hist_config.log_bins),
+                    particle.variable, particle.weight,
+                )
+            h_lin = dataframe.Histo1D(
+                (f"{name}_lin", title, hist_config.n_bins,
+                 hist_config.min_energy, hist_config.max_energy),
+                particle.variable, particle.weight,
+            )
+        return h_log, h_lin
+
     def _create_histograms(self, filters, hist_config):
         """Create histograms using the filters"""
-        from histogram import HistogramSet
         histograms = []
 
         regular_surfaces = filters.get('surfaces', [])
@@ -176,20 +204,9 @@ class Analysis:
                 x_label, y_label = surface.get_axis_labels()
                 nbins_x = int((surface.x_max - surface.x_min) / surface.bin_width)
                 nbins_y = int((surface.y_max - surface.y_min) / surface.bin_width)
-                with self.set_style(self.stileh1):
-                    if hist_config.also_log_bins:
-                        h_log = spatial_filtered_for_1d.Histo1D(
-                            (f"{self.config.particle.name}_h1_{surface.name}_log",
-                             f"; {self.config.particle.variable} [GeV]; n/(GeV * EOT)",
-                             hist_config.n_bins, hist_config.log_bins),
-                            self.config.particle.variable, self.config.particle.weight)
-                    else:
-                        h_log = None  # Don't create log histogram when also_log_bins is False
-                    h_lin = spatial_filtered_for_1d.Histo1D(
-                        (f"{self.config.particle.name}_h1_{surface.name}_lin",
-                         f"; {self.config.particle.variable} [GeV]; n/(GeV * EOT)",
-                         hist_config.n_bins, hist_config.min_energy, hist_config.max_energy),
-                        self.config.particle.variable, self.config.particle.weight)
+                h_log, h_lin = self._create_energy_histograms(
+                    spatial_filtered_for_1d, hist_config, surface.name
+                )
                 with self.set_style(self.stileh2):
                     surface_name = surface.name or f"surf_{surface.id}"
                     if surface.spatial_analysis:
@@ -212,20 +229,9 @@ class Analysis:
                     energy_filtered_face = face_filter.Filter(
                         f"{self.config.particle.variable} >= {hist_config.min_energy} && {self.config.particle.variable} <= {hist_config.max_energy}"
                     )
-                    with self.set_style(self.stileh1):
-                        if hist_config.also_log_bins:
-                            h_log = energy_filtered_face.Histo1D(
-                                (f"{self.config.particle.name}_h1_{box_name}_{face_name}_log",
-                                 f"; {self.config.particle.variable} [GeV]; n/(GeV * EOT)",
-                                 hist_config.n_bins, hist_config.log_bins),
-                                self.config.particle.variable, self.config.particle.weight)
-                        else:
-                            h_log = None  # Don't create log histogram when also_log_bins is False
-                        h_lin = energy_filtered_face.Histo1D(
-                            (f"{self.config.particle.name}_h1_{box_name}_{face_name}_lin",
-                             f"; {self.config.particle.variable} [GeV]; n/(GeV * EOT)",
-                             hist_config.n_bins, hist_config.min_energy, hist_config.max_energy),
-                            self.config.particle.variable, self.config.particle.weight)
+                    h_log, h_lin = self._create_energy_histograms(
+                        energy_filtered_face, hist_config, f"{box_name}_{face_name}"
+                    )
                     with self.set_style(self.stileh2):
                         if box_surface.spatial_analysis:
                             x_bins, y_bins, xlow, xhigh, ylow, yhigh, x_dim, y_dim = \

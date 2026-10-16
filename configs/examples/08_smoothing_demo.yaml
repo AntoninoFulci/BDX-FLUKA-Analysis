@@ -1,42 +1,19 @@
-# Smoothing demo - log-space Gaussian smoothing of comparison curves
-# Demonstrates the "overlay" smoothing mode: the raw histogram is drawn faint
-# while a bold smoothed curve is overlaid on top.
-#
-# Smoothing keys (per comparison):
-#   smoothing:         "off" | "overlay" | "replace"
-#   smoothing_sigma:   Gaussian width in BINS (not GeV); larger = flatter
-#   smooth_x_max:      stop the smoothed curve at this x value (omit = auto-clip)
-#   raw_alpha:         alpha 0..1 of the faint raw line (overlay mode only)
-#   smooth_line_width: bold smoothed line thickness (omit = falls back to line_width)
-
 comparisons:
-  # Neutron flux per surface - log-log overlay with smoothed curves
-  - files:
-    - /path/to/geometryA/analysis_neutrons.root
-    - /path/to/geometryB/analysis_neutrons.root
-
-    hists:
-      - hflux_surf_bdx_room_entry
-      - hflux_surf_bdx_room_entry
-
-    labels:
-      - "Geometry A (BDX room entry surface)"
-      - "Geometry B (BDX room entry surface)"
-
-    output: "neutron_flux_per_surface_smoothed"
-    output_directory: "/path/to/output/smoothing_demo"
-    title: "Neutron flux per surface"
-    x_label: "E_{kin} [GeV]"
-    y_label: "n/(GeV*cm^{2}*EOT)"
-    logx: true
-    logy: true
-
-    colors: [1, 2]
-    line_width: 1
-
-    # --- Smoothing configuration ---
-    smoothing: "overlay"      # faint raw line + bold smoothed curve
-    smoothing_sigma: 8        # Gaussian width in BINS
-    raw_alpha: 0.25           # alpha of the faint raw line (overlay only)
-    # smooth_x_max: 1.0       # stop the smoothed curve at this x value
-    # smooth_line_width: 3    # bold smoothed line thickness
+- hists:
+  - [/path/to/geometryA/analysis_neutrons.root, hflux_surf_bdx_room_entry, Geometry
+      A (BDX room entry surface), 1, 0]
+  - [/path/to/geometryB/analysis_neutrons.root, hflux_surf_bdx_room_entry, Geometry
+      B (BDX room entry surface), 2, 1]
+  output: neutron_flux_per_surface_smoothed
+  output_directory: /path/to/output/smoothing_demo
+  title: Neutron flux per surface
+  x_label: E_{kin} [GeV]
+  y_label: n/(GeV*cm^{2}*EOT)
+  logx: true
+  logy: true
+  line_width: 1
+  rebin: [2, 5]  # Separate figures ending in _rebin2 and _rebin5.
+  rebin_hists: [1]  # Rebin only the second input; its exact label also works.
+  smoothing: overlay
+  smoothing_sigma: 8  # Width in rebinned bins.
+  raw_alpha: 0.25

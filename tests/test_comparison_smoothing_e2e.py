@@ -1,12 +1,10 @@
 # tests/test_comparison_smoothing_e2e.py
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import ROOT
 ROOT.gROOT.SetBatch(True)
 
-from config import ComparisonConfig
-from comparison import compare_histograms_overlay
+from src.config import ComparisonConfig
+from src.comparison import compare_histograms_overlay
 
 
 def _write_root(path, name, peak_bin):

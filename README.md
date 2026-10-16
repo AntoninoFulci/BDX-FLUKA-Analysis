@@ -78,7 +78,17 @@ The filename format is: `{order}_{binning}_{min_energy}_{max_energy}_{histogram_
 ### Command Line Options
 - `-i, --input-dir`: Override input directory for ROOT files
 - `--output-dir`: Override output directory for results
-- `--save-pdf`: Generate PDF files for all histograms after analysis
+- `--no-save-pdf`: Skip PDF export (enabled by default)
+- `--no-save-hstat`: Skip histogram statistics export (enabled by default)
+- `--save-macro`: Also save plots as ROOT macros (`.C`)
+- `--remove-runsummary`: Recompute the cached simulation summary and EOT
+
+Run the same CLI with `python3 -m src.analysis` from the project root.
+Python callers can use `import src`; adding `src/` to `sys.path` is unnecessary.
+
+Reusing `simulation_summary.root` emits a warning: the cached EOT is not
+checked against the current input dataset. If inputs changed, choose a new
+output directory or pass `--remove-runsummary` to rebuild the summary.
 
 ---
 
@@ -110,86 +120,63 @@ Configuration → Variables → Particles → Analysis → Results
 All analysis parameters are defined in YAML or JSON configuration files. Here's the complete structure:
 
 ```yaml
-# Input data configuration
-input_directory: "/path/to/simulation/data"
-
-# Particle definition
+input_directory: /path/to/simulation/data
 particle:
-  particle_id: 8                    # Or [8, 13] for multiple particles
-  name: "neutrons"                  # Used in output filenames
-  variable: "EKin"                  # Energy variable to analyze
-  weight: "Weight1"                 # Statistical weight variable
-
-# Define new computed variables
+  particle_id: 8
+  name: neutrons
+  variable: EKin
+  weight: Weight1
 new_variable:
-  name: "EKin"                      # Variable name
-  expression: "ETot - 0.939565378"  # ROOT expression
-
-# Alternative: multiple new variables
+  name: EKin
+  expression: ETot - 0.939565378
 new_variables:
-  - name: "Beta"
-    expression: "P / ETot"
-  - name: "Gamma"
-    expression: "ETot / 0.939565378"
-
-# Output configuration
+- name: Beta
+  expression: P / ETot
+- name: Gamma
+  expression: ETot / 0.939565378
 output:
-  base_name: "analysis"
-  directory: "./output"
+  base_name: analysis
+  directory: ./output
   include_timestamp: false
   format_template: '{base_name}_{particle_name}_{n_bins}bins_{min_energy}_{max_energy}.root'
-
-# Histogram configurations
 histograms:
-  - n_bins: 1000
-    min_energy: 1.0e-10
-    max_energy: 6.0
-    also_log_bins: true
-  - n_bins: 100
-    min_energy: 0.001
-    max_energy: 0.1
-    also_log_bins: false
-
-# Surface intersection analysis
+- n_bins: 1000
+  min_energy: 1.0e-10
+  max_energy: 6.0
+  also_log_bins: true
+- n_bins: 100
+  min_energy: 0.001
+  max_energy: 0.1
+  also_log_bins: false
 surfaces:
-  - id: 1000
-    name: "enclose"
-    xl: -250
-    xh: 250
-    yl: -250
-    yh: 250
-    bin_width: 0.5
-    spatial_analysis: true
-
-# 3D volume analysis
+- id: 1000
+  name: enclose
+  xl: -250
+  xh: 250
+  yl: -250
+  yh: 250
+  bin_width: 0.5
+  spatial_analysis: true
 box_surfaces:
-  - name: "detector"
-    surface_id: 101
-    xmin: -51.0
-    xmax: 51.0
-    ymin: -51.0
-    ymax: 51.0
-    zmin: 7468.0
-    zmax: 7761.2
-    bin_width: 0.5
-
-# Histogram comparison
+- name: detector
+  surface_id: 101
+  xmin: -51.0
+  xmax: 51.0
+  ymin: -51.0
+  ymax: 51.0
+  zmin: 7468.0
+  zmax: 7761.2
+  bin_width: 0.5
 comparisons:
-  - files:
-      - "output1.root"
-      - "output2.root"
-    hists:
-      - "neutrons_h1_enclose_lin"
-      - "neutrons_h1_enclose_lin"
-    labels:
-      - "Configuration A"
-      - "Configuration B"
-    output: "comparison_plot"
-    title: "Energy Comparison"
-    x_label: "Energy [GeV]"
-    y_label: "Rate [Hz]"
-    logx: true
-    logy: true
+- hists:
+  - [output1.root, neutrons_h1_enclose_lin, Configuration A, kP6Blue, 0]
+  - [output2.root, neutrons_h1_enclose_lin, Configuration B, kP6Yellow, 1]
+  output: comparison_plot
+  title: Energy Comparison
+  x_label: Energy [GeV]
+  y_label: Rate [Hz]
+  logx: true
+  logy: true
 ```
 
 ### Particle Configuration
@@ -369,25 +356,19 @@ box_surfaces:
 ### Comparison Analysis
 
 ```yaml
-# Compare different configurations
 comparisons:
-  - files:
-      - "results/config_a.root"
-      - "results/config_b.root"
-    hists:
-      - "neutrons_h1_detector_lin"
-      - "neutrons_h1_detector_lin"
-    labels:
-      - "Configuration A"
-      - "Configuration B"
-    output: "config_comparison"
-    title: "Configuration Comparison"
-    x_label: "Kinetic Energy [GeV]"
-    y_label: "Rate [1/(GeV·EOT)]"
-    logx: true
-    logy: true
-    x_min: 1.0e-8
-    x_max: 6.0
+- hists:
+  - [results/config_a.root, neutrons_h1_detector_lin, Configuration A, kP6Blue, 0]
+  - [results/config_b.root, neutrons_h1_detector_lin, Configuration B, kP6Yellow,
+    1]
+  output: config_comparison
+  title: Configuration Comparison
+  x_label: Kinetic Energy [GeV]
+  y_label: "Rate [1/(GeV\xB7EOT)]"
+  logx: true
+  logy: true
+  x_min: 1.0e-08
+  x_max: 6.0
 ```
 ---
 
@@ -439,67 +420,102 @@ output:
   include_timestamp: true  # Add timestamp to filename
 ```
 
+PDF and statistics exports use the same `OutputConfig` template to find files,
+including custom prefixes, separators, subdirectories and timestamps. The default
+filename is unchanged. Keep both `{min_energy}` and `{max_energy}` in custom
+templates for energy-range sorting and statistics labels. Energies are formatted
+strings with units; `{n_bins}` is an integer and accepts numeric format specs.
+
 ### 5. Histogram Comparison
 
 Generate overlay plots comparing multiple analyses:
 
 ```yaml
 comparisons:
-  - files: ["file1.root", "file2.root"]
-    hists: ["hist_name", "hist_name"]
-    labels: ["Label 1", "Label 2"]
-    output: "comparison_plot"
-    # Axis range control
-    x_min: 1.0e-6
-    x_max: 1.0
-    y_min: 1.0e-10
-    y_max: 1.0e-2
+- hists:
+  - [file1.root, hist_name, Label 1, kP6Blue, 0]
+  - [file2.root, hist_name, Label 2, kP6Yellow, 1]
+  output: comparison_plot
+  x_min: 1.0e-06
+  x_max: 1.0
+  y_min: 1.0e-10
+  y_max: 0.01
 ```
 
-Preferred paired format (backward-compatible with `files` + `hists`):
+Each comparison uses one format: `hists` rows contain
+`[file_path, histogram_name, label, color, legend_order]`. Lower numeric order
+appears first in the legend. Colors accept ROOT color names or integer codes.
+Separate `files`, `labels`, `colors`, `legend_order`, `labels_and_colors`, and
+`files_name` / `files_names_label` / `files_names_labels_order` fields are no
+longer supported in YAML/JSON. Move their values into the five-field rows.
+
+A comparison requires at least two available histograms. Fewer inputs cause an
+error and a nonzero CLI exit status. Missing histograms still produce warnings
+when at least two remain; labels, colors and legend order retain their input
+identities. ROOT files and canvases are closed on success and on exceptions.
+
+The unused `variable_2d` configuration and `Variable2DConfig` class were removed.
+That option never produced analysis output; configurations containing it now
+raise an explicit error. Spatial histograms configured through surfaces and boxes
+remain supported.
+
+#### Rebinning before smoothing
+
+Set `rebin` on a comparison to group adjacent energy bins before plotting:
 
 ```yaml
 comparisons:
-  - output: "comparison_plot"
-    files_name:
-      - ["file1.root", "hist_name_a"]
-      - ["file2.root", "hist_name_b"]
-    labels: ["Label 1", "Label 2"]
+  - output: rebinned_spectra
+    hists:
+      - [file1.root, spectrum_log, Sample A, kP6Blue, 0]
+      - [file2.root, spectrum_log, Sample B, kP6Yellow, 1]
+    rebin: [5, 10]
+    rebin_hists: [1]  # Only Sample B; ["Sample B"] is equivalent.
+    smoothing: overlay
+    smoothing_sigma: 2
+    smooth_hists: [1]
 ```
 
-`files_name` also accepts dictionary shorthand:
+`rebin: 5` merges each group of five bins in the selected input spectra.
+Default `1` leaves binning unchanged. `rebin_hists` accepts zero-based indices
+from the original `hists` rows, exact labels, or a mixture. Omit it (or use `null`)
+to select all spectra; `[]` selects none. Unselected spectra keep their original
+binning. Invalid indices, unknown labels and ambiguous duplicate labels are errors;
+use an index to distinguish identical labels. Missing histograms do not shift indices.
 
-```yaml
-comparisons:
-  - output: "comparison_plot"
-    files_name:
-      "file1.root": "hist_name_a"
-      "file2.root": "hist_name_b"
-```
+A list such as `rebin: [5, 10]` produces one independent comparison per factor,
+in the specified order: `rebinned_spectra_rebin5.pdf` and
+`rebinned_spectra_rebin10.pdf` in this example. Each starts from the original
+inputs. Excel and optional ROOT macros use the same suffixes. A scalar retains
+the original output filename; a one-element list still adds the suffix.
+Use `[1, 5, 10]` to include a figure with the original binning. Empty lists,
+duplicate factors and non-positive/non-integer factors are rejected.
 
-You can also define labels in the same structure:
+Each factor must divide every selected, available histogram's bin count exactly.
+Unselected histograms do not have this restriction. This prevents ROOT from moving
+leftover high-energy bins into overflow and shortening the plotted range.
+Rebinning supports floating-point 1D spectra (`TH1F`/`TH1D`), including variable
+bin widths; profiles and spatial histograms are not supported by this option.
 
-```yaml
-comparisons:
-  - output: "comparison_plot"
-    files_names_label:
-      - ["file1.root", "hist_name_a", "Label 1"]
-      - ["file2.root", "hist_name_b", "Label 2"]
-```
+The project stores spectra as densities, such as n/(GeV·EOT). Each input is cloned
+and detached from its file. Contents and errors are multiplied by the original
+bin widths, grouped with ROOT `Rebin(N)`, then divided by the new widths. The
+width-weighted integral and its uncertainty are preserved up to floating-point
+roundoff. Input ROOT files stay unchanged; Excel statistics use the original
+unsmoothed histograms.
 
-And optionally define explicit legend order with numeric indices:
+Order: **rebin → axis setup → optional Gaussian smoothing → draw**. In `overlay`
+mode both the faint curve and its smoothed clone use the new binning.
+`smooth_hists` and `rebin_hists` select curves independently.
+`smoothing_sigma` counts bins **after any selected rebinning** and stays unchanged
+across variants, so a fixed value spans a wider energy range after rebinning.
+Smoothing remains a visualization and does not guarantee
+integral conservation; the conservation guarantee applies to rebinning.
 
-```yaml
-comparisons:
-  - output: "comparison_plot"
-    files_names_labels_order:
-      - ["file1.root", "hist_name_a", "Label 1", 1]
-      - ["file2.root", "hist_name_b", "Label 2", 0]
-```
+Reference: [ROOT TH1::Rebin documentation](https://root.cern.ch/doc/master/classTH1.html).
+ROOT sums grouped contents and propagates stored `Sumw2` errors; width conversions
+above preserve this project's density normalization.
 
-In `files_names_labels_order`, each row is:
-- `[file_path, histogram_name, label, order_index]`
-- lower `order_index` appears first in the legend
 ---
 
-*Last updated: January 2026*
+*Last updated: October 2026*

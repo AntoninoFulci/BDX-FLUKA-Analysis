@@ -1,13 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+"""Command-line entry point for BDX analysis."""
 
-import sys
-from pathlib import Path
-
-# Ensure src on sys.path then delegate
-src_dir = Path(__file__).parent / "src"
-sys.path.insert(0, str(src_dir))
-
-from analysis import main
+from src.analysis import main
 
 
 if __name__ == "__main__":
